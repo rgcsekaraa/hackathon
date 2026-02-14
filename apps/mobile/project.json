@@ -4,7 +4,7 @@
     "serve": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "npx expo start",
+        "command": "npx expo start --web",
         "cwd": "apps/mobile"
       }
     },

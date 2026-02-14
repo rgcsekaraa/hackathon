@@ -22,7 +22,7 @@ class User(Base):
     # Relations
     tasks: Mapped[list["WorkspaceComponent"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     projects: Mapped[list["Project"]] = relationship(back_populates="user", cascade="all, delete-orphan")
-    tradie_profile: Mapped["TradieProfile | None"] = relationship(back_populates="user", uselist=False, cascade="all, delete-orphan")
+    user_profile: Mapped["UserProfile | None"] = relationship(back_populates="user", uselist=False, cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         return f"User(id={self.id!r}, email={self.email!r})"

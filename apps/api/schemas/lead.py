@@ -40,10 +40,10 @@ class TradieDecisionEnum(str, Enum):
 
 
 # ---------------------------------------------------------------------------
-# Tradie Profile
+# User Profile
 # ---------------------------------------------------------------------------
 
-class TradieProfileCreate(BaseModel):
+class UserProfileCreate(BaseModel):
     business_name: str = ""
     service_types: list[str] = Field(default_factory=list)
     base_callout_fee: float = 80.0
@@ -57,7 +57,7 @@ class TradieProfileCreate(BaseModel):
     working_hours: dict[str, list[str]] = Field(default_factory=dict)
 
 
-class TradieProfileResponse(BaseModel):
+class UserProfileResponse(BaseModel):
     id: str
     user_id: str
     business_name: str
@@ -127,7 +127,7 @@ class LeadUpdate(BaseModel):
 
 class LeadResponse(BaseModel):
     id: str
-    tradie_id: str
+    user_profile_id: str
     status: LeadStatusEnum
     customer_name: str
     customer_phone: str

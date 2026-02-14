@@ -41,9 +41,9 @@ class UrgencyLevel(str, enum.Enum):
 # TradieProfile
 # ---------------------------------------------------------------------------
 
-class TradieProfile(Base):
-    """Tradie onboarding data: rates, services, availability."""
-    __tablename__ = "tradie_profiles"
+class UserProfile(Base):
+    """User profile data: rates, services, availability."""
+    __tablename__ = "user_profiles"
 
     id: Mapped[str] = mapped_column(String, primary_key=True)
     user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id"), unique=True, index=True)
@@ -80,11 +80,11 @@ class TradieProfile(Base):
     )
 
     # Relations
-    user: Mapped["User"] = relationship(back_populates="tradie_profile")
-    leads: Mapped[list["LeadSession"]] = relationship(back_populates="tradie", cascade="all, delete-orphan")
+    user: Mapped["User"] = relationship(back_populates="user_profile")
+    leads: Mapped[list["LeadSession"]] = relationship(back_populates="user_profile", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
-        return f"TradieProfile(id={self.id!r}, business={self.business_name!r})"
+        return f"UserProfile(id={self.id!r}, business={self.business_name!r})"
 
 
 # ---------------------------------------------------------------------------
@@ -96,7 +96,7 @@ class LeadSession(Base):
     __tablename__ = "lead_sessions"
 
     id: Mapped[str] = mapped_column(String, primary_key=True)
-    tradie_id: Mapped[str] = mapped_column(String, ForeignKey("tradie_profiles.id"), index=True)
+    user_profile_id: Mapped[str] = mapped_column(String, ForeignKey("user_profiles.id"), index=True)
 
     # State machine
     status: Mapped[str] = mapped_column(String, default=LeadStatus.NEW.value)
@@ -147,7 +147,7 @@ class LeadSession(Base):
     )
 
     # Relations
-    tradie: Mapped["TradieProfile"] = relationship(back_populates="leads")
+    user_profile: Mapped["UserProfile"] = relationship(back_populates="leads")
     line_items: Mapped[list["QuoteLineItem"]] = relationship(back_populates="lead", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:

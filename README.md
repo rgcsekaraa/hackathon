@@ -2,9 +2,7 @@
 
 **The future of spatial AI interaction.**
 
-Sophiie Space is an advanced AI agent workspace designed for high-density information management and natural human-AI interaction. Built during the Sophiie AI Agents Hackathon 2026, it focuses on providing a premium, professional experience through Material Design 3 and seamless voice/text integration.
-
----
+Sophiie Space is an advanced AI agent workspace designed for high-density information management and natural human-AI interaction. Built during the Sophiie AI Agents Hackathon 2026, it focuses on providing a premium, professional experience through a custom "Orbit" design system and continuous voice/text integration.
 
 ## Project Overview
 
@@ -12,14 +10,13 @@ Sophiie Space is an advanced AI agent workspace designed for high-density inform
 | Field | Information |
 |-------|-------------|
 | Name | [User Name] |
-| University / Employer | [Institution] |
 
 ### Project Details
 | Field | Information |
 |-------|-------------|
 | Project Name | Sophiie Space |
-| One-Line Description | A high-density AI workspace with spatial voice interaction and M3 aesthetics. |
-| Tech Stack | Next.js, FastAPI, MUI, WebSockets, SQLAlchemy |
+| One-Line Description | A high-density AI workspace with spatial voice interaction and Orbit aesthetics. |
+| Tech Stack | Next.js, FastAPI, Expo (Web/Mobile), LiveKit, LangChain |
 | AI Provider(s) | OpenAI / Anthropic (via API layer) |
 
 ---
@@ -27,10 +24,10 @@ Sophiie Space is an advanced AI agent workspace designed for high-density inform
 ## Core Features
 
 ### Sophiie Orbit Interaction
-Natural voice capture and processing that allows users to interact with their workspace hands-free. The system uses Web Speech API for real-time recognition.
+Natural voice capture and processing (STT/TTS/LLM) that allows users to interact with their workspace hands-free. The system uses LiveKit Agents for robust, real-time voice streaming.
 
-### Material Design 3 UI
-A complete overhaul of the interface using M3 design tokens, featuring tonal palettes, dynamic elevations, and refined typography for a professional look.
+### Orbit Design System
+A complete overhaul of the interface using custom "Orbit" design tokens, featuring deep space gradients, glassmorphism, staggered animations, and refined typography.
 
 ### Real-time Workspace Sync
 Powered by WebSockets, the workspace stays in sync across devices, providing instant updates for tasks, notes, and AI responses.
@@ -42,17 +39,29 @@ Optimized for productivity, the dashboard provides a compact yet readable view o
 
 ## Tech Stack
 
-### Frontend
+### Frontend (Web)
 - Next.js 14 (App Router)
 - Material UI (MUI) with M3 tokens
 - React Hook Form + Zod
-- Web Speech API
+
+### Mobile (New!)
+- Expo Router
+- React Native Web (Shimmed for browser compatibility)
+- Reanimated + Linear Gradient
+- Orbit Design System
 
 ### Backend
 - FastAPI
 - SQLAlchemy + aiosqlite
 - WebSockets for real-time communication
 - JWT Authentication
+
+### AI & Voice Pipeline
+- **Orchestration**: LiveKit Agents Framework
+- **STT**: Deepgram Nova-2
+- **LLM**: LangChain + OpenAI (GPT-4o)
+- **TTS**: ElevenLabs Turbo v2
+- **RAG**: ChromaDB (Vector Search)
 
 ---
 
@@ -61,48 +70,39 @@ Optimized for productivity, the dashboard provides a compact yet readable view o
 1.  **Install Dependencies**:
     ```bash
     # Install tools (if needed)
-    npm install -g pnpm
+    npm install -g pnpm nx
     pip install uv
 
     # Install project dependencies
     pnpm install
-    # API dependencies are handled via uv in the start script, or manually:
-    # cd apps/api && uv venv && uv pip install -r requirements.txt
+    # API dependencies are auto-handled via uv, or manually:
+    # cd apps/api && uv sync
     ```
 
-2.  **Start Everything (Web + API + Mobile)**:
+2.  **Environment Setup**:
+    - Copy `.env.example` to `.env` in `apps/api` and `apps/web`.
+    - Fill in keys for OpenAI, Deepgram, ElevenLabs, LiveKit.
+
+3.  **Start Everything (Web + API + Mobile)**:
     ```bash
     pnpm run dev
     ```
-    This launches:
+    This launches all three services in parallel:
     - **Web Dashboard**: [http://localhost:3000](http://localhost:3000)
     - **API Server**: [http://localhost:8000](http://localhost:8000)
-    - **Expo Mobile**: Scannable QR code in terminal
-
-3.  **Build Everything**:
-    ```bash
-    pnpm run build
-    ```
-    This builds:
-    - **Web**: Production build (`.next`)
-    - **Mobile**: Web bundle (`dist`)
-    - **API**: (No-op check)
+    - **Mobile App**: [http://localhost:8081](http://localhost:8081)
 
 4.  **Manual Start (Optional)**:
     - Web: `nx serve web`
     - API: `nx serve api`
     - Mobile: `nx serve mobile`
 
-Refer to [TESTING.md](TESTING.md) for detailed instructions on how to set up and run Sophiie Space locally.
+5.  **Build Everything**:
+    ```bash
+    pnpm run build
+    ```
 
----
-
-## Architecture
-
-Sophiie Space follows a modern client-server architecture:
-1. **Frontend**: A Next.js application that handles UI/UX and voice recognition.
-2. **Backend**: A FastAPI server managing authentication, database persistence, and real-time state synchronization via WebSockets.
-3. **Database**: SQLite for lightweight, efficient local storage.
+Refer to `walkthrough.md` for detailed milestones and `task.md` for progress tracking.
 
 ---
 

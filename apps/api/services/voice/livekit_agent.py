@@ -179,6 +179,7 @@ async def entrypoint(ctx: JobContext):
                 use_speaker_boost=True
             ),
         ),
+        model="eleven_turbo_v2",
         api_key=settings.elevenlabs_api_key,
     )
 
