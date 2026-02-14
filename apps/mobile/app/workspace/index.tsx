@@ -7,9 +7,10 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { useColors, useThemeMode, typography } from "../../lib/theme";
+import { useColors, useThemeMode, typography, SHAPE } from "../../lib/theme";
 import { useWorkspace, type WorkspaceComponent } from "../../lib/workspace-provider";
 import { TaskCard } from "../../components/workspace/TaskCard";
 import { StatusIndicator } from "../../components/workspace/StatusIndicator";
@@ -17,15 +18,17 @@ import { VoiceButton } from "../../components/voice/VoiceButton";
 import { TextInput } from "../../components/input/TextInput";
 import { ActionChips } from "../../components/input/ActionChips";
 
+import { TopBar } from "../../components/layout/TopBar";
+
 /**
- * Main workspace screen -- the primary mobile interface.
- * Shows task list, voice capture, text input, and action chips.
+ * Main workspace screen -- Redesigned for production-grade high-density dashboard.
+ * Primary mobile interface following the Sophiie-inspired design system.
  */
 export default function WorkspaceScreen() {
   const insets = useSafeAreaInsets();
   const colors = useColors();
   const { mode } = useThemeMode();
-  const { components, serverStatus, sendAction } = useWorkspace();
+  const { components, sendAction } = useWorkspace();
 
   const handleToggleComplete = useCallback(
     (id: string) => {
@@ -60,17 +63,20 @@ export default function WorkspaceScreen() {
 
   const renderEmpty = useCallback(
     () => (
-      <View style={[styles.emptyContainer, { borderColor: colors.border }]}>
-        <Text style={[typography.body, { color: colors.textSecondary, textAlign: "center" }]}>
-          No tasks yet
+      <View style={[styles.emptyContainer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <View style={[styles.emptyIconCircle, { backgroundColor: `${colors.primary}10` }]}>
+          <Ionicons name="mail-unread-outline" size={32} color={colors.primary} />
+        </View>
+        <Text style={[typography.h3, { color: colors.text, textAlign: "center", marginBottom: 8 }]}>
+          Your inbox is empty
         </Text>
         <Text
           style={[
             typography.bodySmall,
-            { color: colors.textSecondary, textAlign: "center", marginTop: 4 },
+            { color: colors.textSecondary, textAlign: "center", fontWeight: "500", paddingHorizontal: 20 },
           ]}
         >
-          Type a command below to start planning
+          Speak or type commands to capture ideas and plan your workspace.
         </Text>
       </View>
     ),
@@ -78,59 +84,48 @@ export default function WorkspaceScreen() {
   );
 
   return (
-    <KeyboardAvoidingView
-      style={[styles.root, { backgroundColor: colors.background }]}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      keyboardVerticalOffset={0}
+    <View
+      style={[styles.root, { backgroundColor: mode === "light" ? "#fbfcfd" : colors.background }]}
     >
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 8, borderBottomColor: colors.border }]}>
-        <View style={styles.headerRow}>
-          <Text
-            style={[
-              typography.h2,
-              { color: colors.primary },
-            ]}
-          >
-            Spatial Voice
-          </Text>
-          <StatusIndicator status={serverStatus} />
-        </View>
-      </View>
+      <TopBar />
 
-      {/* Task list */}
-      <FlatList
-        data={components}
-        renderItem={renderItem}
-        keyExtractor={(item) => item.id}
-        ListEmptyComponent={renderEmpty}
-        contentContainerStyle={[
-          styles.listContent,
-          components.length === 0 && styles.listEmpty,
-        ]}
-        showsVerticalScrollIndicator={false}
-      />
-
-      {/* Input area */}
-      <View
-        style={[
-          styles.inputArea,
-          {
-            paddingBottom: insets.bottom + 8,
-            backgroundColor: colors.background,
-            borderTopColor: colors.border,
-          },
-        ]}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={0}
       >
-        <ActionChips />
-        <View style={styles.inputRow}>
-          <VoiceButton />
-          <View style={styles.textInputWrap}>
+        {/* Task list */}
+        <FlatList
+          data={components}
+          renderItem={renderItem}
+          keyExtractor={(item) => item.id}
+          ListEmptyComponent={renderEmpty}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+        />
+
+        {/* Docked Command Bar */}
+        <View
+          style={[
+            styles.inputArea,
+            {
+              paddingBottom: insets.bottom + 12,
+              backgroundColor: colors.surface,
+              borderTopWidth: 1,
+              borderTopColor: colors.border,
+            },
+          ]}
+        >
+          <View style={{ marginBottom: 4 }}>
+            <ActionChips />
+          </View>
+          <View style={styles.inputRow}>
+            <VoiceButton />
             <TextInput />
           </View>
         </View>
-      </View>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -138,42 +133,34 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
   },
-  header: {
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-  },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
   listContent: {
-    padding: 16,
-  },
-  listEmpty: {
-    flex: 1,
-    justifyContent: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 20,
+    flexGrow: 1,
   },
   emptyContainer: {
-    borderWidth: 1,
-    borderStyle: "dashed",
-    borderRadius: 16,
+    borderRadius: SHAPE.borderRadius,
     padding: 40,
     alignItems: "center",
+    borderWidth: 1,
+    marginTop: 40,
+  },
+  emptyIconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
   },
   inputArea: {
     paddingHorizontal: 16,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    gap: 10,
+    paddingTop: 12,
+    gap: 8,
   },
   inputRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-  },
-  textInputWrap: {
-    flex: 1,
   },
 });
