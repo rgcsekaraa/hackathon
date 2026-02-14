@@ -1,12 +1,12 @@
 """
 Voice API router — Inbound call handling, transcription, TTS, and photo pipeline.
 
-Production-hardened with:
-- Edge case handling (empty transcripts, noisy calls, API failures)
-- Retry logic on transient failures
-- File validation on uploads
-- Proper TwiML flow for all call states
-- Redis caching for speed
+Supports two modes:
+1. Real-time (preferred): Twilio Media Streams + Deepgram Live + ElevenLabs Streaming
+2. Fallback: Record-and-callback webhook
+
+Production-hardened with edge case handling, retry logic, file validation,
+proper TwiML flow, and Redis caching.
 """
 
 import asyncio
@@ -14,7 +14,7 @@ import logging
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, File, UploadFile, Form, Request, HTTPException
+from fastapi import APIRouter, File, UploadFile, Form, Request, HTTPException, WebSocket
 from fastapi.responses import Response
 from pydantic import BaseModel
 
@@ -114,7 +114,70 @@ async def _cache_lead(lead_id: str, lead_data: dict) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Endpoints
+# Real-Time Voice Endpoints (Twilio Media Streams)
+# ---------------------------------------------------------------------------
+
+@router.post("/voice/incoming")
+async def incoming_call(request: Request):
+    """
+    Twilio calls this when a call arrives.
+
+    Returns TwiML that opens a Media Stream WebSocket for real-time
+    bidirectional audio (instead of the old record-and-callback model).
+    """
+    form = await request.form()
+    caller = form.get("From", "unknown")
+    called = form.get("To", "unknown")
+    call_sid = form.get("CallSid", "unknown")
+
+    logger.info("📞 Incoming call: %s → %s (SID: %s)", caller, called, call_sid)
+
+    # Determine our WebSocket URL dynamically
+    host = request.headers.get("host", "localhost:8000")
+    scheme = "wss" if request.url.scheme == "https" else "ws"
+    ws_url = f"{scheme}://{host}/api/voice/media-stream"
+
+    xml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Connect>
+        <Stream url="{ws_url}">
+            <Parameter name="from" value="{caller}" />
+            <Parameter name="to" value="{called}" />
+        </Stream>
+    </Connect>
+</Response>"""
+
+    return Response(content=xml, media_type="application/xml")
+
+
+@router.websocket("/voice/media-stream")
+async def media_stream_endpoint(websocket: WebSocket):
+    """
+    Real-time bidirectional audio via Twilio Media Streams.
+
+    Flow:
+    1. Twilio opens this WebSocket when a call connects
+    2. Audio chunks stream in from the customer (µ-law 8kHz)
+    3. We forward them to Deepgram Live for real-time transcription
+    4. On sentence completion → classify with LangChain
+    5. Generate TTS response with ElevenLabs streaming
+    6. Stream audio back to customer through Twilio
+    """
+    from services.voice.media_stream import handle_media_stream
+
+    # Pre-load tradie context
+    tradie_ctx = {}
+    try:
+        async with get_db_context() as db:
+            tradie_ctx = await load_tradie_context(db) or {}
+    except Exception as exc:
+        logger.warning("Failed to load tradie context for media stream: %s", exc)
+
+    await handle_media_stream(websocket, tradie_ctx)
+
+
+# ---------------------------------------------------------------------------
+# Endpoints (Batch Mode — Fallback)
 # ---------------------------------------------------------------------------
 
 @router.post("/voice/transcribe", response_model=TranscribeResponse)
