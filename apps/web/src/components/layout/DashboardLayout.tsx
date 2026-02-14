@@ -24,6 +24,7 @@ import NotificationsIcon from "@mui/icons-material/NotificationsNoneOutlined";
 import Avatar from "@mui/material/Avatar";
 import Badge from "@mui/material/Badge";
 import InputBase from "@mui/material/InputBase";
+import FolderIcon from "@mui/icons-material/FolderOutlined";
 import { alpha, useTheme } from "@mui/material/styles";
 
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -34,31 +35,30 @@ import ClickAwayListener from "@mui/material/ClickAwayListener";
 import CircularProgress from "@mui/material/CircularProgress";
 import Popover from "@mui/material/Popover";
 
-const SIDEBAR_WIDTH = 240;
-const NAVBAR_HEIGHT = 56;
-const FOOTER_HEIGHT = 28;
+import Drawer from "@mui/material/Drawer";
+
+const SIDEBAR_WIDTH = 260; // Slightly wider for M3 labels
+const NAVBAR_HEIGHT = 64; 
 
 interface DashboardLayoutProps {
   children: ReactNode;
 }
 
 const NAV_ITEMS = [
-  { text: "Dashboard", icon: <HomeIcon fontSize="small" />, active: true },
-  { text: "Inbox", icon: <InboxIcon fontSize="small" />, badge: 3 },
-  { text: "Schedule", icon: <ScheduleIcon fontSize="small" /> },
-  { text: "Jobs", icon: <BuildIcon fontSize="small" /> },
-  { text: "Customers", icon: <PeopleIcon fontSize="small" /> },
-  { text: "Documents", icon: <DescriptionIcon fontSize="small" /> },
+  { text: "Dashboard", icon: <HomeIcon />, active: true },
+  { text: "Inbox", icon: <InboxIcon />, badge: 3 },
+  { text: "Schedule", icon: <ScheduleIcon /> },
+  { text: "Jobs", icon: <BuildIcon /> },
+  { text: "Customers", icon: <PeopleIcon /> },
+  { text: "Documents", icon: <DescriptionIcon /> },
 ];
 
 /**
- * Dashboard layout for the web view -- full-width canvas with persistent sidebar.
- * Premium enterprise aesthetic inspired by Sophiie.ai.
+ * Dashboard layout for the web view -- M3 Refined.
  */
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const theme = useTheme();
   const { user, logout, token } = useAuth();
-  const isLight = theme.palette.mode === "light";
   
   const [showChat, setShowChat] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -89,108 +89,94 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   };
 
   return (
-    <Box
-      sx={{
-        display: "flex",
-        height: "100vh",
-        width: "100%",
-        overflow: "hidden",
-        backgroundColor: "background.default",
-      }}
-    >
-      {/* Sidebar - Enhanced MUI Drawer Style */}
-      <Box
+    <Box sx={{ display: "flex", height: "100vh", backgroundColor: "background.default" }}>
+      {/* M3 Sidebar Drawer */}
+      <Drawer
+        variant="permanent"
         sx={{
           width: SIDEBAR_WIDTH,
-          height: "100vh",
-          backgroundColor: isLight ? "#ffffff" : "background.paper",
-          display: "flex",
-          flexDirection: "column",
           flexShrink: 0,
-          borderRight: "1px solid",
-          borderColor: "divider",
-          zIndex: (theme) => theme.zIndex.drawer + 1,
+          "& .MuiDrawer-paper": {
+            width: SIDEBAR_WIDTH,
+            boxSizing: "border-box",
+            borderRight: "1px solid",
+            borderColor: "divider",
+            backgroundColor: "background.paper",
+            display: "flex",
+            flexDirection: "column",
+          },
         }}
       >
         {/* Sidebar Header */}
-        <Box sx={{ height: NAVBAR_HEIGHT, display: "flex", alignItems: "center", px: 2.5, borderBottom: "1px solid", borderColor: "divider" }}>
+        <Box sx={{ p: 2, display: "flex", alignItems: "center", gap: 1.5, minHeight: NAVBAR_HEIGHT }}>
           <Box
             sx={{
-              width: 24,
-              height: 24,
-              borderRadius: "4px",
+              width: 32,
+              height: 32,
+              borderRadius: "8px",
               backgroundColor: "primary.main",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               fontWeight: 800,
-              fontSize: "0.9rem",
               color: "white",
-              mr: 1.5,
             }}
           >
             S
           </Box>
-          <Typography variant="subtitle1" sx={{ fontWeight: 800, color: "text.primary", letterSpacing: "-0.01em" }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 800, letterSpacing: "-0.02em" }}>
             sophiie-space
           </Typography>
         </Box>
 
-        {/* Sidebar Nav */}
-        <Box sx={{ flex: 1, px: 1, py: 1.5 }}>
-          <List sx={{ gap: 0.25, display: "flex", flexDirection: "column" }}>
+        <Divider />
+
+        {/* M3 Navigation List */}
+        <Box sx={{ overflow: "auto", flex: 1, p: 1.5 }}>
+          <List sx={{ gap: 0.5 }}>
             {NAV_ITEMS.map((item) => (
               <ListItem key={item.text} disablePadding>
                 <ListItemButton
                   selected={item.active}
                   sx={{
-                    borderRadius: "4px",
-                    py: 1,
-                    px: 1.5,
-                    backgroundColor: item.active ? alpha(theme.palette.primary.main, 0.08) : "transparent",
-                    color: item.active ? "primary.main" : "text.secondary",
+                    borderRadius: "100px",
+                    mb: 0.25,
+                    px: 2,
+                    py: 1.2,
                     "&.Mui-selected": {
-                      backgroundColor: alpha(theme.palette.primary.main, 0.08),
+                      backgroundColor: alpha(theme.palette.primary.main, 0.12),
                       color: "primary.main",
-                      "&:hover": { backgroundColor: alpha(theme.palette.primary.main, 0.12) },
+                      "& .MuiListItemIcon-root": { color: "primary.main" },
                     },
-                    "&:hover": {
-                      backgroundColor: alpha(theme.palette.action.hover, 0.8),
-                      color: "text.primary",
-                    },
+                    "&:hover": { backgroundColor: alpha(theme.palette.action.hover, 0.8) },
                   }}
                 >
-                  <ListItemIcon sx={{ minWidth: 32, color: "inherit" }}>
+                  <ListItemIcon sx={{ minWidth: 40, color: item.active ? "primary.main" : "text.secondary" }}>
                     {item.icon}
                   </ListItemIcon>
                   <ListItemText
                     primary={item.text}
-                    primaryTypographyProps={{
-                      fontSize: "0.875rem",
-                      fontWeight: item.active ? 600 : 500,
-                    }}
+                    primaryTypographyProps={{ fontSize: "0.875rem", fontWeight: item.active ? 700 : 500 }}
                   />
                   {item.badge && (
-                    <Typography sx={{ fontSize: "0.7rem", fontWeight: 700, color: "primary.main", backgroundColor: alpha(theme.palette.primary.main, 0.1), px: 0.8, py: 0.1, borderRadius: "4px" }}>
-                      {item.badge}
-                    </Typography>
+                    <Badge badgeContent={item.badge} color="primary" sx={{ mr: 1 }} />
                   )}
                 </ListItemButton>
               </ListItem>
             ))}
           </List>
 
-          <Box sx={{ mt: 3, px: 2, mb: 1 }}>
-            <Typography variant="caption" sx={{ fontWeight: 800, color: "text.disabled", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+          <Box sx={{ mt: 4, mb: 1, px: 2 }}>
+            <Typography variant="caption" sx={{ fontWeight: 800, color: "text.disabled", textTransform: "uppercase", letterSpacing: "0.08em" }}>
               Project Folders
             </Typography>
           </Box>
-          <List sx={{ px: 1, gap: 0.25, display: "flex", flexDirection: "column" }}>
+          <List sx={{ p: 0 }}>
             {["Work", "Personal", "Hackathon"].map((project) => (
               <ListItem key={project} disablePadding>
-                <ListItemButton sx={{ borderRadius: "4px", py: 0.8, px: 1.5 }}>
-                  <ListItemIcon sx={{ minWidth: 32 }}>
-                    <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: project === "Work" ? "primary.main" : "text.disabled" }} />
+                <ListItemButton sx={{ borderRadius: "100px", px: 2, py: 0.8 }}>
+                  <ListItemIcon sx={{ minWidth: 40 }}>
+                    <FolderIcon fontSize="small" />
                   </ListItemIcon>
                   <ListItemText primary={project} primaryTypographyProps={{ fontSize: "0.85rem", fontWeight: 500 }} />
                 </ListItemButton>
@@ -199,163 +185,120 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           </List>
         </Box>
 
-        {/* Sidebar Footer - User Profile */}
-        <Box sx={{ p: 1.5, borderTop: "1px solid", borderColor: "divider" }}>
-          <ListItemButton sx={{ borderRadius: "4px", py: 1 }} onClick={logout}>
-            <ListItemIcon sx={{ minWidth: 36 }}>
-              <Avatar sx={{ width: 28, height: 28, fontSize: "0.75rem", bgcolor: "secondary.main" }}>
-                {user?.full_name?.[0] || user?.email?.[0] || "U"}
-              </Avatar>
-            </ListItemIcon>
+        <Divider />
+
+        {/* User Profile Section */}
+        <Box sx={{ p: 2 }}>
+          <ListItemButton sx={{ borderRadius: "12px", p: 1 }} onClick={logout}>
+            <Avatar sx={{ width: 32, height: 32, mr: 1.5, fontSize: "0.8rem", bgcolor: "secondary.main" }}>
+              {user?.full_name?.[0] || "U"}
+            </Avatar>
             <ListItemText
               primary={user?.full_name || "User"}
               secondary={user?.email || "Account"}
-              primaryTypographyProps={{ fontSize: "0.85rem", fontWeight: 600 }}
-              secondaryTypographyProps={{ fontSize: "0.7rem", sx: { overflow: "hidden", textOverflow: "ellipsis" } }}
+              primaryTypographyProps={{ fontSize: "0.85rem", fontWeight: 600, noWrap: true }}
+              secondaryTypographyProps={{ fontSize: "0.7rem", noWrap: true }}
             />
-            <SettingsIcon sx={{ fontSize: 16, color: "text.disabled" }} />
           </ListItemButton>
         </Box>
-      </Box>
+      </Drawer>
 
-      {/* Main Content Area */}
-      <Box
-        sx={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          minWidth: 0,
-          height: "100vh",
-        }}
-      >
-        {/* Top Navbar */}
-        <AppBar
-          position="static"
-          elevation={0}
-          sx={{
-            height: NAVBAR_HEIGHT,
-            backgroundColor: "background.paper",
-            borderBottom: "1px solid",
-            borderColor: "divider",
-            zIndex: (theme) => theme.zIndex.appBar,
-          }}
-        >
-          <Toolbar sx={{ px: 2, minHeight: `${NAVBAR_HEIGHT}px !important` }}>
+      <Box sx={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+        {/* Top App Bar */}
+        <AppBar position="static" color="inherit" elevation={0} sx={{ borderBottom: "1px solid", borderColor: "divider" }}>
+          <Toolbar sx={{ px: 3, minHeight: NAVBAR_HEIGHT }}>
             <Box sx={{ display: "flex", alignItems: "center", flex: 1 }}>
-              {/* Global Search Bar - Sharp Style */}
+              {/* M3 Tonal Search Bar */}
               <Box
-                id="search-container"
                 sx={{
                   display: "flex",
                   alignItems: "center",
-                  backgroundColor: alpha(theme.palette.action.hover, 0.5),
-                  px: 1.5,
-                  py: 0.5,
-                  borderRadius: "4px",
-                  width: 400,
+                  backgroundColor: alpha(theme.palette.action.hover, 0.4),
+                  borderRadius: "28px",
+                  px: 2,
+                  py: 0.8,
+                  width: 440,
                   maxWidth: "100%",
-                  position: "relative",
                 }}
               >
-                <SearchIcon sx={{ fontSize: 18, color: "text.disabled", mr: 1 }} />
+                <SearchIcon sx={{ color: "text.secondary", mr: 1, fontSize: 20 }} />
                 <InputBase
-                  placeholder="Search anything..."
+                  placeholder="Search notes, tasks, files..."
+                  fullWidth
                   value={searchQuery}
                   onChange={handleSearch}
                   onFocus={(e) => setAnchorEl(e.currentTarget.parentElement as HTMLDivElement)}
-                  sx={{ fontSize: "0.875rem", width: "100%", color: "text.primary" }}
+                  sx={{ fontSize: "0.9rem" }}
                 />
-                
-                {searching && <CircularProgress size={14} sx={{ ml: 1 }} />}
-
-                <Popover
-                  open={Boolean(anchorEl) && (searchResults.length > 0 || searching)}
-                  anchorEl={anchorEl}
-                  onClose={() => setAnchorEl(null)}
-                  anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
-                  transitionDuration={0}
-                  slotProps={{
-                    paper: {
-                      sx: { width: 400, mt: 1, p: 1, borderRadius: "4px", boxShadow: "0 4px 20px rgba(0,0,0,0.15)" }
-                    }
-                  }}
-                >
-                  <List disablePadding>
-                    {searchResults.map((res) => (
-                      <ListItem key={res.id} disablePadding>
-                        <ListItemButton sx={{ borderRadius: "4px" }} onClick={() => setAnchorEl(null)}>
-                          <ListItemText
-                            primary={res.title}
-                            secondary={res.snippet}
-                            primaryTypographyProps={{ fontSize: "0.85rem", fontWeight: 600 }}
-                            secondaryTypographyProps={{ fontSize: "0.75rem" }}
-                          />
-                        </ListItemButton>
-                      </ListItem>
-                    ))}
-                  </List>
-                </Popover>
+                {searching && <CircularProgress size={16} sx={{ ml: 1 }} />}
               </Box>
             </Box>
 
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-              <Badge badgeContent={4} color="error" variant="dot">
-                <NotificationsIcon sx={{ fontSize: 22, color: "text.secondary" }} />
-              </Badge>
-              <Box sx={{ width: 1, height: 24, backgroundColor: "divider", mx: 0.5 }} />
+            <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+              <IconButton size="small"><NotificationsIcon /></IconButton>
               <ThemeToggle />
-              <IconButton color={showChat ? "primary" : "default"} onClick={() => setShowChat(!showChat)} sx={{ border: "1px solid", borderColor: "divider", borderRadius: "4px", p: 0.5 }}>
-                <ChatIcon sx={{ fontSize: 20 }} />
+              <IconButton 
+                color={showChat ? "primary" : "default"} 
+                onClick={() => setShowChat(!showChat)}
+                sx={{ 
+                  borderRadius: "12px", 
+                  backgroundColor: showChat ? alpha(theme.palette.primary.main, 0.1) : "transparent" 
+                }}
+              >
+                <ChatIcon />
               </IconButton>
             </Box>
           </Toolbar>
         </AppBar>
 
+        {/* Content Area */}
         <Box sx={{ flex: 1, display: "flex", overflow: "hidden" }}>
-          <Box
-            sx={{
-              flex: 1,
-              overflow: "auto",
-              backgroundColor: isLight ? "#fbfcfd" : "background.default",
-              position: "relative",
-            }}
-          >
-            <Box sx={{ p: 3, maxWidth: 1400, mx: "auto" }}>
+          <Box sx={{ flex: 1, overflow: "auto", position: "relative", p: 3 }}>
+            <Box sx={{ maxWidth: 1200, mx: "auto" }}>
               {children}
             </Box>
           </Box>
           {showChat && <AIChatSidebar onClose={() => setShowChat(false)} />}
         </Box>
 
-        {/* Thin Status Footer */}
-        <Box
-          sx={{
-            height: FOOTER_HEIGHT,
-            backgroundColor: isLight ? "#ffffff" : "background.paper",
-            borderTop: "1px solid",
-            borderColor: "divider",
-            display: "flex",
-            alignItems: "center",
-            px: 2,
-            gap: 2,
-          }}
-        >
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.8 }}>
-            <Box sx={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: "success.main" }} />
-            <Typography sx={{ fontSize: "0.65rem", fontWeight: 700, color: "text.secondary", textTransform: "uppercase" }}>
-              System Operational
-            </Typography>
+        {/* M3 Status Footer */}
+        <Box sx={{ height: 28, px: 2, borderTop: "1px solid", borderColor: "divider", display: "flex", alignItems: "center", gap: 2 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Box sx={{ width: 6, height: 6, borderRadius: "50%", bgcolor: "success.main" }} />
+            <Typography variant="caption" sx={{ fontWeight: 700, color: "text.secondary" }}>SYSTEM ONLINE</Typography>
           </Box>
-          <Divider orientation="vertical" flexItem sx={{ my: 0.8 }} />
-          <Typography sx={{ fontSize: "0.65rem", fontWeight: 600, color: "text.disabled" }}>
-            V1.0.4-SHARP
-          </Typography>
-          <Box sx={{ flex: 1 }} />
-          <Typography sx={{ fontSize: "0.65rem", fontWeight: 600, color: "text.secondary" }}>
-            SQLite Persistence Active
-          </Typography>
+          <Typography variant="caption" sx={{ color: "text.disabled" }}>V1.1-M3</Typography>
         </Box>
       </Box>
+
+      {/* Global Search Popover */}
+      <Popover
+        open={Boolean(anchorEl) && (searchResults.length > 0 || searching)}
+        anchorEl={anchorEl}
+        onClose={() => setAnchorEl(null)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+        transitionDuration={150}
+        slotProps={{
+          paper: {
+            sx: { width: 440, mt: 1, p: 1, borderRadius: "16px", boxShadow: "0 4px 24px rgba(0,0,0,0.12)" }
+          }
+        }}
+      >
+        <List disablePadding>
+          {searchResults.map((res) => (
+            <ListItem key={res.id} disablePadding>
+              <ListItemButton sx={{ borderRadius: "8px" }} onClick={() => setAnchorEl(null)}>
+                <ListItemText
+                  primary={res.title}
+                  secondary={res.snippet}
+                  primaryTypographyProps={{ fontSize: "0.85rem", fontWeight: 600 }}
+                  secondaryTypographyProps={{ fontSize: "0.75rem" }}
+                />
+              </ListItemButton>
+            </ListItem>
+          ))}
+        </List>
+      </Popover>
     </Box>
   );
 }

@@ -69,18 +69,18 @@ function DashboardWorkspace() {
 
   return (
     <DashboardLayout>
-      <Box sx={{ height: "100%" }}>
+      <Box sx={{ height: "100%", pt: 1 }}>
         {/* Header row */}
-        <Box sx={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", mb: 4 }}>
+        <Box sx={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", mb: 2 }}>
           <Box>
-            <Typography variant="h4" sx={{ fontWeight: 800, letterSpacing: "-0.03em", mb: 0.5 }}>
+            <Typography variant="h6" sx={{ fontWeight: 800, letterSpacing: "-0.03em", mb: 0 }}>
               Inbox
             </Typography>
-            <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 500 }}>
-              You have {components.length} {components.length === 1 ? "task" : "tasks"} in your workspace
+            <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 600, textTransform: "uppercase", fontSize: "0.65rem", letterSpacing: "0.05em" }}>
+              {components.length} {components.length === 1 ? "task" : "tasks"} total
             </Typography>
           </Box>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 3 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
             <StatusIndicator status={serverStatus} />
           </Box>
         </Box>
@@ -125,22 +125,22 @@ function DashboardWorkspace() {
             </Typography>
           </Box>
         ) : (
-          <Grid container spacing={3}>
+          <Grid container spacing={2}>
             {grouped.map(([date, items]) => (
-              <Grid size={{ xs: 12, md: 6, lg: 4 }} key={date}>
+              <Grid size={{ xs: 12, md: 6, lg: 3 }} key={date}>
                 <Box
                   sx={{
-                    mb: 2,
+                    mb: 1.5,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
-                    px: 1,
+                    px: 0.5,
                   }}
                 >
-                  <Typography variant="subtitle1" sx={{ fontWeight: 700, color: "text.primary" }}>
+                  <Typography variant="caption" sx={{ fontWeight: 800, color: "text.primary", textTransform: "uppercase", letterSpacing: "0.05em", fontSize: "0.65rem" }}>
                     {date}
                   </Typography>
-                  <Typography variant="caption" sx={{ fontWeight: 700, color: "text.disabled" }}>
+                  <Typography variant="caption" sx={{ fontWeight: 700, color: "text.disabled", fontSize: "0.6rem" }}>
                     {items.length} {items.length === 1 ? "ITEM" : "ITEMS"}
                   </Typography>
                 </Box>

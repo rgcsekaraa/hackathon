@@ -62,33 +62,32 @@ export function VoiceCapture() {
       <IconButton
         onClick={handleMicToggle}
         sx={{
-          width: 52,
-          height: 52,
+          width: 56,
+          height: 56,
+          borderRadius: "16px", // M3 FAB/Large Component radius
           backgroundColor: isListening
-            ? alpha(theme.palette.error.main, 0.15)
+            ? alpha(theme.palette.error.main, 0.1)
             : alpha(theme.palette.primary.main, 0.1),
           color: isListening ? "error.main" : "primary.main",
-          border: 2,
-          borderColor: isListening ? "error.main" : "primary.main",
-          transition: "all 0.2s ease",
+          border: "1px solid",
+          borderColor: isListening ? alpha(theme.palette.error.main, 0.3) : alpha(theme.palette.primary.main, 0.3),
+          transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
           flexShrink: 0,
           "&:hover": {
             backgroundColor: isListening
-              ? alpha(theme.palette.error.main, 0.25)
+              ? alpha(theme.palette.error.main, 0.2)
               : alpha(theme.palette.primary.main, 0.2),
-            transform: "scale(1.05)",
           },
           ...(isListening && {
-            animation: "micPulse 1.5s ease-in-out infinite",
+            animation: "micPulse 2s infinite",
             "@keyframes micPulse": {
               "0%": { boxShadow: `0 0 0 0 ${alpha(theme.palette.error.main, 0.4)}` },
-              "70%": { boxShadow: `0 0 0 12px ${alpha(theme.palette.error.main, 0)}` },
-              "100%": { boxShadow: `0 0 0 0 ${alpha(theme.palette.error.main, 0)}` },
+              "100%": { boxShadow: `0 0 0 12px ${alpha(theme.palette.error.main, 0)}` },
             },
           }),
         }}
       >
-        {isListening ? <MicOffIcon /> : <MicIcon />}
+        {isListening ? <MicOffIcon sx={{ fontSize: 24 }} /> : <MicIcon sx={{ fontSize: 24 }} />}
       </IconButton>
 
       {/* Live transcript */}

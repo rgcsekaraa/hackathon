@@ -29,7 +29,9 @@ export function useSpeechRecognition({
 }: UseSpeechRecognitionOptions = {}): UseSpeechRecognitionReturn {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState("");
-  const [isSupported, setIsSupported] = useState(false);
+  const [isSupported, setIsSupported] = useState(() => 
+    typeof window !== "undefined" && !!(window.SpeechRecognition || window.webkitSpeechRecognition)
+  );
   const recognitionRef = useRef<SpeechRecognition | null>(null);
 
   useEffect(() => {
@@ -37,7 +39,6 @@ export function useSpeechRecognition({
       window.SpeechRecognition || window.webkitSpeechRecognition;
 
     if (SpeechRecognition) {
-      setIsSupported(true);
       const recognition = new SpeechRecognition();
       recognition.lang = language;
       recognition.continuous = continuous;

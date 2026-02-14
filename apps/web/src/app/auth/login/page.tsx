@@ -124,15 +124,20 @@ export default function LoginPage() {
             required
             InputProps={{ sx: { borderRadius: "4px" } }}
           />
+          <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
+            <Link href="/auth/forgot-password" variant="body2" sx={{ fontSize: "0.75rem", fontWeight: 600, color: "primary.main", textDecoration: "none" }}>
+              Forgot Password?
+            </Link>
+          </Box>
           <Button
             fullWidth
             type="submit"
             variant="contained"
             size="large"
             disabled={loading}
-            sx={{ mt: 3, py: 1.5, fontWeight: 700, borderRadius: "4px", boxShadow: "none" }}
+            sx={{ mt: 1, py: 1.2, fontWeight: 600, borderRadius: "4px", boxShadow: "none" }}
           >
-            {loading ? <CircularProgress size={24} color="inherit" /> : "Sign In"}
+            {loading ? <CircularProgress size={20} color="inherit" /> : "Sign In"}
           </Button>
 
           <Divider sx={{ my: 3 }}>
@@ -191,7 +196,7 @@ export default function LoginPage() {
 
         <Box sx={{ mt: 3, textAlign: "center" }}>
           <Typography variant="body2">
-            Don't have an account?{" "}
+            Don&apos;t have an account?{" "}
             <Link href="/auth/signup" fontWeight={600} underline="hover">
               Sign Up
             </Link>

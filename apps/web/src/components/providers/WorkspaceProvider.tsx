@@ -72,54 +72,6 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const connect = useCallback(() => {
-    if (wsRef.current?.readyState === WebSocket.OPEN || !token) return;
-
-    setConnectionStatus("connecting");
-    const ws = new WebSocket(`${WS_BASE_URL}/ws/session?token=${token}`);
-
-    ws.onopen = () => {
-      setConnectionStatus("connected");
-
-      // Request full state sync on connect
-      ws.send(JSON.stringify({ type: "sync_request" }));
-    };
-
-    ws.onmessage = (event) => {
-      try {
-        const message = JSON.parse(event.data);
-        handleServerMessage(message);
-      } catch {
-        // Ignore malformed messages
-      }
-    };
-
-    ws.onclose = () => {
-      setConnectionStatus("disconnected");
-      // Auto-reconnect after 2 seconds
-      reconnectTimerRef.current = setTimeout(connect, 2000);
-    };
-
-    ws.onerror = () => {
-      setConnectionStatus("error");
-    };
-
-    wsRef.current = ws;
-  }, [token]);
-
-  const handleServerMessage = useCallback((message: Record<string, unknown>) => {
-    const type = message.type as string;
-
-    if (type === "status") {
-      setServerStatus(message.status as ServerStatus);
-    } else if (type === "intent_parsed") {
-      setLastIntents(message.intents as Array<Record<string, unknown>>);
-    } else if (type === "patch") {
-      const operations = message.operations as Array<Record<string, unknown>>;
-      applyPatches(operations);
-    }
-  }, []);
-
   const applyPatches = useCallback((operations: Array<Record<string, unknown>>) => {
     setComponents((prev) => {
       let next = [...prev];
@@ -155,6 +107,57 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       return next;
     });
   }, []);
+
+  const handleServerMessage = useCallback((message: Record<string, unknown>) => {
+    const type = message.type as string;
+
+    if (type === "status") {
+      setServerStatus(message.status as ServerStatus);
+    } else if (type === "intent_parsed") {
+      setLastIntents(message.intents as Array<Record<string, unknown>>);
+    } else if (type === "patch") {
+      const operations = message.operations as Array<Record<string, unknown>>;
+      applyPatches(operations);
+    }
+  }, [applyPatches]);
+
+  const connect = useCallback(() => {
+    if (wsRef.current?.readyState === WebSocket.OPEN || !token) return;
+
+    setConnectionStatus("connecting");
+    const ws = new WebSocket(`${WS_BASE_URL}/ws/session?token=${token}`);
+
+    ws.onopen = () => {
+      setConnectionStatus("connected");
+
+      // Request full state sync on connect
+      ws.send(JSON.stringify({ type: "sync_request" }));
+    };
+
+    ws.onmessage = (event: MessageEvent) => {
+      try {
+        const message = JSON.parse(event.data);
+        handleServerMessage(message as Record<string, unknown>);
+      } catch (err) {
+        // Log or handle the error, but setError is not defined here.
+        // For now, we'll just ignore malformed messages as before,
+        // but keep the 'err' variable for potential future use.
+        console.error("Failed to parse WebSocket message:", err);
+      }
+    };
+
+    ws.onclose = () => {
+      setConnectionStatus("disconnected");
+      // Auto-reconnect after 2 seconds
+      reconnectTimerRef.current = setTimeout(connect, 2000);
+    };
+
+    ws.onerror = () => {
+      setConnectionStatus("error");
+    };
+
+    wsRef.current = ws;
+  }, [token, handleServerMessage]);
 
   const sendUtterance = useCallback((text: string, source: "voice" | "text" | "chip") => {
     if (wsRef.current?.readyState !== WebSocket.OPEN) return;

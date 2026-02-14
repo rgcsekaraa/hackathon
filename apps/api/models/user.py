@@ -13,6 +13,10 @@ class User(Base):
     google_id: Mapped[str | None] = mapped_column(String, unique=True, index=True, nullable=True)
     role: Mapped[str] = mapped_column(String, default="member")  # admin, member
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    verification_token: Mapped[str | None] = mapped_column(String, nullable=True)
+    reset_token: Mapped[str | None] = mapped_column(String, nullable=True)
+    reset_token_expires: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relations

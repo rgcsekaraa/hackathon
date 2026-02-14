@@ -5,7 +5,13 @@ import Box from "@mui/material/Box";
 import AppBar from "@mui/material/AppBar";
 import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
-import Chip from "@mui/material/Chip";
+import BottomNavigation from "@mui/material/BottomNavigation";
+import BottomNavigationAction from "@mui/material/BottomNavigationAction";
+import Paper from "@mui/material/Paper";
+import InboxIcon from "@mui/icons-material/InboxOutlined";
+import FolderIcon from "@mui/icons-material/FolderOutlined";
+import SettingsIcon from "@mui/icons-material/SettingsOutlined";
+import { useState } from "react";
 
 import { ThemeToggle } from "@/components/ThemeToggle";
 
@@ -14,10 +20,11 @@ interface MobileLayoutProps {
 }
 
 /**
- * Mobile layout with compact header and bottom input area.
- * Designed for the "control + capture" surface -- voice, text, chips.
+ * Mobile layout with M3 Bottom Navigation and refined AppBar.
  */
 export function MobileLayout({ children }: MobileLayoutProps) {
+  const [navValue, setNavValue] = useState(0);
+
   return (
     <Box
       sx={{
@@ -28,54 +35,75 @@ export function MobileLayout({ children }: MobileLayoutProps) {
         maxWidth: 480,
         mx: "auto",
         overflow: "hidden",
+        backgroundColor: "background.default",
       }}
     >
-      {/* Header */}
+      {/* M3 Top App Bar */}
       <AppBar
         position="static"
+        color="inherit"
         elevation={0}
         sx={{
-          backgroundColor: "background.paper",
-          borderBottom: 1,
+          borderBottom: "1px solid",
           borderColor: "divider",
         }}
       >
-        <Toolbar sx={{ minHeight: 56, px: 2 }}>
+        <Toolbar sx={{ minHeight: 64, px: 2 }}>
           <Typography
             variant="h6"
             sx={{
               fontWeight: 700,
-              background: "linear-gradient(135deg, #818cf8 0%, #38bdf8 100%)",
-              backgroundClip: "text",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
               flexGrow: 1,
+              color: "text.primary",
+              letterSpacing: "-0.01em",
             }}
           >
             Spatial Voice
           </Typography>
-          <Chip
-            label="Synced"
-            size="small"
-            color="success"
-            variant="outlined"
-            sx={{ mr: 1, fontSize: "0.7rem" }}
-          />
           <ThemeToggle />
         </Toolbar>
       </AppBar>
 
-      {/* Content area -- scrollable */}
+      {/* Scrollable Content Area */}
       <Box
         sx={{
           flex: 1,
           overflow: "auto",
           px: 2,
           py: 2,
+          pb: 10, // Space for BottomNav
         }}
       >
         {children}
       </Box>
+
+      {/* M3 Bottom Navigation */}
+      <Paper 
+        sx={{ position: "fixed", bottom: 0, left: 0, right: 0, borderRadius: 0, zIndex: 1000 }} 
+        elevation={3}
+      >
+        <BottomNavigation
+          showLabels
+          value={navValue}
+          onChange={(event, newValue) => setNavValue(newValue)}
+          sx={{
+            height: 80,
+            borderTop: "1px solid",
+            borderColor: "divider",
+            backgroundColor: "background.paper",
+            "& .MuiBottomNavigationAction-root": {
+              color: "text.secondary",
+              "&.Mui-selected": {
+                color: "primary.main",
+              },
+            },
+          }}
+        >
+          <BottomNavigationAction label="Inbox" icon={<InboxIcon />} />
+          <BottomNavigationAction label="Projects" icon={<FolderIcon />} />
+          <BottomNavigationAction label="Settings" icon={<SettingsIcon />} />
+        </BottomNavigation>
+      </Paper>
     </Box>
   );
 }

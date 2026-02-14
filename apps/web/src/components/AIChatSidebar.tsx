@@ -9,6 +9,7 @@ import SendIcon from "@mui/icons-material/SendOutlined";
 import SmartToyIcon from "@mui/icons-material/SmartToyOutlined";
 import PersonIcon from "@mui/icons-material/PersonOutlined";
 import CloseIcon from "@mui/icons-material/CloseOutlined";
+import CircularProgress from "@mui/material/CircularProgress";
 import { alpha, useTheme } from "@mui/material/styles";
 import { useAuth } from "@/context/AuthContext";
 
@@ -95,46 +96,63 @@ export function AIChatSidebar({ onClose }: AIChatSidebarProps) {
             sx={{
               display: "flex",
               flexDirection: "column",
-              alignSelf: msg.role === "user" ? "flex-end" : "flex-start",
-              maxWidth: "85%",
+              alignItems: msg.role === "user" ? "flex-end" : "flex-start",
+              maxWidth: "100%",
             }}
           >
+            <Box sx={{ display: "flex", alignItems: "center", mb: 0.5, px: 1, gap: 1 }}>
+               {msg.role === "assistant" && <SmartToyIcon sx={{ fontSize: 14, color: "primary.main" }} />}
+               <Typography variant="caption" sx={{ fontWeight: 700, fontSize: "0.65rem", color: "text.secondary" }}>
+                  {msg.role === "assistant" ? "SOPHIIE" : "YOU"}
+               </Typography>
+            </Box>
             <Box
               sx={{
-                p: 1.5,
-                borderRadius: "12px",
-                borderTopRightRadius: msg.role === "user" ? "2px" : "12px",
-                borderTopLeftRadius: msg.role === "assistant" ? "2px" : "12px",
-                bgcolor: msg.role === "user" ? "primary.main" : alpha(theme.palette.action.hover, 0.8),
-                color: msg.role === "user" ? "white" : "text.primary",
+                p: 2,
+                borderRadius: msg.role === "assistant" ? "16px 16px 16px 4px" : "16px 16px 4px 16px",
+                bgcolor: msg.role === "user" ? "primary.main" : "surfaceVariant.main",
+                color: msg.role === "user" ? "primary.contrastText" : "text.primary",
+                boxShadow: "none",
+                maxWidth: "90%",
               }}
             >
-              <Typography variant="body2">{msg.content}</Typography>
+              <Typography variant="body2" sx={{ fontSize: "0.85rem", lineHeight: 1.5 }}>{msg.content}</Typography>
             </Box>
-            <Typography variant="caption" color="text.disabled" sx={{ mt: 0.5, px: 0.5, alignSelf: msg.role === "user" ? "flex-end" : "flex-start" }}>
-              {msg.role === "user" ? "You" : "Sophiie"}
-            </Typography>
           </Box>
         ))}
         {loading && (
-          <Typography variant="caption" sx={{ fontStyle: "italic", color: "text.disabled", px: 1 }}>
-            Sophiie is thinking...
-          </Typography>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, px: 1 }}>
+            <CircularProgress size={14} thickness={5} />
+            <Typography variant="caption" sx={{ color: "text.disabled", fontWeight: 600 }}>
+              Thinking...
+            </Typography>
+          </Box>
         )}
       </Box>
 
-      <Box sx={{ p: 2, borderTop: "1px solid", borderColor: "divider" }}>
-        <Box sx={{ display: "flex", gap: 1 }}>
+      <Box sx={{ p: 2, borderTop: "1px solid", borderColor: "divider", backgroundColor: "background.paper" }}>
+        <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
           <TextField
             fullWidth
-            size="small"
-            placeholder="Type a message..."
+            placeholder="Ask Sophiie..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={(e) => e.key === "Enter" && handleSend()}
-            sx={{ "& .MuiOutlinedInput-root": { borderRadius: "4px" } }}
+            sx={{ 
+              "& .MuiOutlinedInput-root": { 
+                borderRadius: "24px",
+                backgroundColor: alpha(theme.palette.action.hover, 0.4),
+                "& fieldset": { borderColor: "transparent" },
+                "&:hover fieldset": { borderColor: "primary.main" },
+              } 
+            }}
           />
-          <IconButton color="primary" onClick={handleSend} disabled={!input.trim() || loading}>
+          <IconButton 
+            color="primary" 
+            onClick={handleSend} 
+            disabled={!input.trim() || loading}
+            sx={{ backgroundColor: alpha(theme.palette.primary.main, 0.1), borderRadius: "12px" }}
+          >
             <SendIcon />
           </IconButton>
         </Box>

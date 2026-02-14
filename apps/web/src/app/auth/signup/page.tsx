@@ -9,6 +9,7 @@ import Typography from "@mui/material/Typography";
 import Alert from "@mui/material/Alert";
 import Paper from "@mui/material/Paper";
 import Link from "@mui/material/Link";
+import CircularProgress from "@mui/material/CircularProgress";
 import { useAuth } from "@/context/AuthContext";
 
 export default function SignupPage() {
@@ -26,7 +27,8 @@ export default function SignupPage() {
     setError("");
 
     try {
-      const res = await fetch("http://localhost:8001/auth/signup", {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const res = await fetch(`${apiUrl}/auth/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password, full_name: fullName }),
@@ -40,8 +42,8 @@ export default function SignupPage() {
 
       login(data.access_token, data.user);
       router.push("/dashboard");
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Signup failed");
     } finally {
       setLoading(false);
     }
@@ -65,31 +67,33 @@ export default function SignupPage() {
           maxWidth: 400,
           borderRadius: "4px",
           backgroundColor: "background.paper",
+          boxShadow: "0 4px 20px rgba(0,0,0,0.04)",
         }}
       >
         <Box sx={{ mb: 3, textAlign: "center" }}>
           <Box
             sx={{
-              width: 40,
-              height: 40,
+              width: 32,
+              height: 32,
               borderRadius: "4px",
               backgroundColor: "primary.main",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               fontWeight: 800,
+              fontSize: "0.8rem",
               color: "white",
               mx: "auto",
-              mb: 2,
+              mb: 1.5,
             }}
           >
             S
           </Box>
-          <Typography variant="h5" sx={{ fontWeight: 800 }}>
+          <Typography variant="h6" sx={{ fontWeight: 800, letterSpacing: "-0.02em" }}>
             Create Account
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Join Spatial Voice today
+            Join sophiie-space today
           </Typography>
         </Box>
 
@@ -104,9 +108,10 @@ export default function SignupPage() {
             fullWidth
             label="Full Name"
             variant="outlined"
+            size="small"
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
-            margin="normal"
+            margin="dense"
             required
             InputProps={{ sx: { borderRadius: "4px" } }}
           />
@@ -114,10 +119,11 @@ export default function SignupPage() {
             fullWidth
             label="Email Address"
             variant="outlined"
+            size="small"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            margin="normal"
+            margin="dense"
             required
             InputProps={{ sx: { borderRadius: "4px" } }}
           />
@@ -125,10 +131,11 @@ export default function SignupPage() {
             fullWidth
             label="Password"
             variant="outlined"
+            size="small"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            margin="normal"
+            margin="dense"
             required
             InputProps={{ sx: { borderRadius: "4px" } }}
           />
@@ -138,9 +145,9 @@ export default function SignupPage() {
             variant="contained"
             size="large"
             disabled={loading}
-            sx={{ mt: 3, py: 1.5, fontWeight: 700 }}
+            sx={{ mt: 3, py: 1.2, fontWeight: 600, borderRadius: "4px", boxShadow: "none" }}
           >
-            {loading ? "Creating..." : "Create Account"}
+            {loading ? <CircularProgress size={20} color="inherit" /> : "Create Account"}
           </Button>
         </form>
 

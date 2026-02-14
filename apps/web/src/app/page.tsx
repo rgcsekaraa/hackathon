@@ -40,15 +40,15 @@ function MobileWorkspace() {
   return (
     <MobileLayout>
       {/* Header section */}
-      <Box sx={{ pt: 1, pb: 3 }}>
-        <Typography variant="h4" sx={{ fontWeight: 800, letterSpacing: "-0.03em", mb: 0.5 }}>
+      <Box sx={{ pt: 1, pb: 1.5 }}>
+        <Typography variant="h5" sx={{ fontWeight: 800, letterSpacing: "-0.03em", mb: 0.25 }}>
           Inbox
         </Typography>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <StatusIndicator status={serverStatus} />
-          <Box sx={{ width: 4, height: 4, borderRadius: "50%", backgroundColor: "text.disabled", mx: 0.5 }} />
-          <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 600 }}>
-            {components.length} {components.length === 1 ? "TASK" : "TASKS"}
+          <Box sx={{ width: 4, height: 4, borderRadius: "50%", backgroundColor: "text.disabled", mx: 0.25 }} />
+          <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 700, fontSize: "0.65rem", letterSpacing: "0.05em" }}>
+            {components.length} {components.length === 1 ? "ITEM" : "ITEMS"}
           </Typography>
         </Box>
       </Box>

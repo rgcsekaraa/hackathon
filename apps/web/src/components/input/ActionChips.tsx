@@ -40,30 +40,21 @@ export function ActionChips() {
           icon={chip.icon}
           size="small"
           onClick={() => sendUtterance(chip.command, "chip")}
-          variant="outlined"
           sx={{
             cursor: "pointer",
-            borderRadius: 1.5,
-            fontSize: "0.75rem",
+            borderRadius: "12px", // M3 Chip Radius
+            fontSize: "0.8rem",
             fontWeight: 600,
+            backgroundColor: alpha(theme.palette.action.hover, 0.4),
+            border: "1px solid",
             borderColor: "divider",
-            backgroundColor: "background.paper",
-            color: "text.secondary",
-            transition: "all 0.15s ease",
-            "& .MuiChip-icon": {
-              color: "text.disabled",
-              transition: "color 0.15s ease",
-            },
+            transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+            "& .MuiChip-icon": { color: "text.secondary" },
             "&:hover": {
+              backgroundColor: alpha(theme.palette.primary.main, 0.08),
               borderColor: "primary.main",
               color: "primary.main",
-              backgroundColor: alpha(theme.palette.primary.main, 0.04),
-              "& .MuiChip-icon": {
-                color: "primary.main",
-              },
-            },
-            "&:active": {
-              transform: "scale(0.98)",
+              "& .MuiChip-icon": { color: "primary.main" },
             },
           }}
         />

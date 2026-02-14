@@ -56,7 +56,8 @@ async def google_callback(request: Request, db: AsyncSession = Depends(get_db)):
             email=user_info.email,
             full_name=user_info.display_name or user_info.email,
             google_id=user_info.id,
-            hashed_password=None  # No password for SSO users
+            hashed_password=None,  # No password for SSO users
+            is_verified=True # Google already verified the email
         )
         db.add(user)
     else:

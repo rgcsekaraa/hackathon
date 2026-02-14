@@ -6,6 +6,7 @@ from sqlalchemy import select
 from db.session import get_db
 from models.user import User
 from core.auth import decode_token
+from models.token import TokenBlacklist
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
@@ -17,6 +18,15 @@ async def get_current_user(
     Dependency to validate JWT and return the authenticated user.
     Used to protect routes and identify active sessions.
     """
+    # Check if token is blacklisted
+    result = await db.execute(select(TokenBlacklist).where(TokenBlacklist.token == token))
+    if result.scalar_one_or_none():
+         raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session has been invalidated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     payload = decode_token(token)
     if not payload:
         raise HTTPException(

@@ -62,68 +62,79 @@ export function TaskCard({
 
   return (
     <Card
-      elevation={0}
+      id={id}
+      variant="outlined"
       sx={{
-        position: "relative",
-        border: "1px solid",
-        borderColor: "divider",
-        backgroundColor: "background.paper",
+        p: 0,
         mb: 1,
-        transition: "all 0.15s ease-in-out",
+        transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
         opacity: completed ? 0.6 : 1,
+        borderRadius: "16px", // M3 Card Radius
         "&:hover": {
-          borderColor: alpha(theme.palette.primary.main, 0.3),
-          backgroundColor: isLight ? alpha(theme.palette.primary.main, 0.01) : alpha(theme.palette.primary.main, 0.04),
-          "& .delete-btn": { opacity: 1 },
+          borderColor: "primary.main",
+          backgroundColor: alpha(theme.palette.primary.main, 0.02),
         },
       }}
     >
-      <CardContent sx={{ py: 2, px: 2.5, "&:last-child": { pb: 2 } }}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2.5 }}>
-          {/* Header Info */}
+      <CardContent sx={{ p: 1.5, "&:last-child": { pb: 1.5 } }}>
+        <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1.5 }}>
+          {/* Status Checkbox replacement with M3 circle */}
+          <IconButton 
+            size="small" 
+            onClick={() => onToggleComplete?.(id)}
+            sx={{ mt: 0.25, color: completed ? "success.main" : "text.disabled" }}
+          >
+            {completed ? <CheckCircleIcon /> : <CheckCircleOutlineIcon />}
+          </IconButton>
+
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 0.5 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
               <Typography
-                variant="subtitle1"
+                variant="subtitle2"
                 sx={{
                   fontWeight: 700,
-                  fontSize: "1rem",
+                  fontSize: "0.9rem",
                   color: "text.primary",
                   textDecoration: completed ? "line-through" : "none",
-                  letterSpacing: "-0.01em",
                 }}
               >
                 {title}
               </Typography>
-              
-              {/* Status Indicator Dot */}
-              <Box sx={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: priorityCfg.color }} />
-              
-              {/* Right Aligned Metadata */}
               <Box sx={{ flexGrow: 1 }} />
-              <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 600 }}>
-                {timeSlot ? (TIME_SLOT_LABELS[timeSlot] || timeSlot) : "All day"}
-              </Typography>
+              <Chip
+                label={timeSlot ? (TIME_SLOT_LABELS[timeSlot] || timeSlot) : "ALL DAY"}
+                size="small"
+                variant="filled"
+                sx={{ 
+                  height: 20, 
+                  fontSize: "0.65rem", 
+                  fontWeight: 800, 
+                  bgcolor: alpha(theme.palette.action.hover, 0.5),
+                  color: "text.secondary",
+                  borderRadius: "6px"
+                }}
+              />
             </Box>
 
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mb: 0.8 }}>
               {priority !== "normal" && (
-                <Typography
-                  variant="caption"
-                  sx={{
-                    fontWeight: 700,
+                <Chip 
+                  label={priorityCfg.label} 
+                  size="small"
+                  sx={{ 
+                    height: 18, 
+                    fontSize: "0.6rem", 
+                    fontWeight: 900, 
+                    bgcolor: alpha(priorityCfg.color, 0.1), 
                     color: priorityCfg.color,
-                    fontSize: "0.7rem",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.05em",
+                    borderRadius: "4px",
+                    textTransform: "uppercase"
                   }}
-                >
-                  • {priorityCfg.label}
-                </Typography>
+                />
               )}
               {date && (
-                <Typography variant="caption" sx={{ color: "text.secondary", fontSize: "0.75rem" }}>
-                   | {date}
+                <Typography variant="caption" sx={{ color: "text.disabled", fontSize: "0.7rem", mt: 0.2 }}>
+                   {date}
                 </Typography>
               )}
             </Box>
@@ -132,48 +143,16 @@ export function TaskCard({
               variant="body2"
               sx={{
                 color: "text.secondary",
+                fontSize: "0.8rem",
+                lineHeight: 1.5,
                 display: "-webkit-box",
                 WebkitLineClamp: 2,
                 WebkitBoxOrient: "vertical",
                 overflow: "hidden",
-                fontSize: "0.875rem",
-                lineHeight: 1.5,
               }}
             >
-              {description || "No additional details provided for this task."}
+              {description}
             </Typography>
-          </Box>
-
-          {/* Actions */}
-          <Box sx={{ display: "flex", gap: 0.5, alignItems: "center" }}>
-            <IconButton
-              size="small"
-              onClick={() => onToggleComplete?.(id)}
-              sx={{
-                color: completed ? "success.main" : "text.secondary",
-                backgroundColor: completed ? alpha(theme.palette.success.main, 0.08) : "transparent",
-                transition: "all 0.2s",
-                "&:hover": {
-                  backgroundColor: completed ? alpha(theme.palette.success.main, 0.15) : alpha(theme.palette.primary.main, 0.08),
-                },
-              }}
-            >
-              {completed ? <CheckCircleIcon fontSize="small" /> : <CheckCircleOutlineIcon fontSize="small" />}
-            </IconButton>
-            
-            <IconButton
-              className="delete-btn"
-              size="small"
-              onClick={() => onDelete?.(id)}
-              sx={{
-                color: "error.main",
-                opacity: 0,
-                transition: "all 0.15s",
-                "&:hover": { backgroundColor: alpha(theme.palette.error.main, 0.08) },
-              }}
-            >
-              <DeleteOutlineIcon fontSize="small" />
-            </IconButton>
           </Box>
         </Box>
       </CardContent>
