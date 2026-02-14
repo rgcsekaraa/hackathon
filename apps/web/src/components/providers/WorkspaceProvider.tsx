@@ -9,6 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useAuth } from "@/context/AuthContext";
 
 type ConnectionStatus = "connecting" | "connected" | "disconnected" | "error";
 type ServerStatus = "listening" | "thinking" | "updating" | "synced" | "error";
@@ -60,20 +61,22 @@ const WS_BASE_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000";
  * for patch operations from the server and applies them locally.
  * This is the central state management for the workspace.
  */
-export function WorkspaceProvider({ sessionId = "default", children }: WorkspaceProviderProps) {
+export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   const [components, setComponents] = useState<WorkspaceComponent[]>([]);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("disconnected");
   const [serverStatus, setServerStatus] = useState<ServerStatus>("synced");
   const [lastIntents, setLastIntents] = useState<Array<Record<string, unknown>>>([]);
+  
+  const { token } = useAuth();
 
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const connect = useCallback(() => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) return;
+    if (wsRef.current?.readyState === WebSocket.OPEN || !token) return;
 
     setConnectionStatus("connecting");
-    const ws = new WebSocket(`${WS_BASE_URL}/ws/session/${sessionId}`);
+    const ws = new WebSocket(`${WS_BASE_URL}/ws/session?token=${token}`);
 
     ws.onopen = () => {
       setConnectionStatus("connected");
@@ -102,7 +105,7 @@ export function WorkspaceProvider({ sessionId = "default", children }: Workspace
     };
 
     wsRef.current = ws;
-  }, [sessionId]);
+  }, [token]);
 
   const handleServerMessage = useCallback((message: Record<string, unknown>) => {
     const type = message.type as string;
@@ -187,7 +190,7 @@ export function WorkspaceProvider({ sessionId = "default", children }: Workspace
       if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
       wsRef.current?.close();
     };
-  }, [connect]);
+  }, [connect, token]);
 
   const value: WorkspaceState = {
     components,

@@ -12,6 +12,8 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { WorkspaceProvider, useWorkspace } from "@/components/providers/WorkspaceProvider";
 import { TaskCard } from "@/components/workspace/TaskCard";
 import { StatusIndicator } from "@/components/workspace/StatusIndicator";
+import InboxIcon from "@mui/icons-material/InboxOutlined";
+import GridViewIcon from "@mui/icons-material/GridViewOutlined";
 
 /**
  * Groups components by date for the dashboard timeline view.
@@ -49,6 +51,7 @@ function DashboardWorkspace() {
   const theme = useTheme();
   const { components, serverStatus, sendAction } = useWorkspace();
   const grouped = groupByDate(components);
+  const isLight = theme.palette.mode === "light";
 
   const handleToggleComplete = useCallback(
     (id: string) => {
@@ -68,76 +71,81 @@ function DashboardWorkspace() {
     <DashboardLayout>
       <Box sx={{ height: "100%" }}>
         {/* Header row */}
-        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3 }}>
+        <Box sx={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", mb: 4 }}>
           <Box>
-            <Typography variant="h4" sx={{ fontWeight: 700 }}>
-              Workspace
+            <Typography variant="h4" sx={{ fontWeight: 800, letterSpacing: "-0.03em", mb: 0.5 }}>
+              Inbox
             </Typography>
-            <Typography variant="body2" sx={{ color: "text.secondary" }}>
-              {components.length} {components.length === 1 ? "item" : "items"} in workspace
+            <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 500 }}>
+              You have {components.length} {components.length === 1 ? "task" : "tasks"} in your workspace
             </Typography>
           </Box>
-          <StatusIndicator status={serverStatus} />
+          <Box sx={{ display: "flex", alignItems: "center", gap: 3 }}>
+            <StatusIndicator status={serverStatus} />
+          </Box>
         </Box>
 
         {/* Timeline grid */}
         {components.length === 0 ? (
-          <Paper
-            elevation={0}
+          <Box
             sx={{
-              p: 8,
+              p: 10,
               textAlign: "center",
-              backgroundColor: alpha(theme.palette.primary.main, 0.04),
-              border: 1,
+              backgroundColor: isLight ? "white" : alpha(theme.palette.background.paper, 0.4),
+              border: "1px solid",
               borderColor: "divider",
-              borderStyle: "dashed",
               borderRadius: 3,
-              minHeight: 300,
+              minHeight: 400,
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
+              boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.1)",
             }}
           >
-            <Typography variant="h5" sx={{ fontWeight: 600, mb: 2 }}>
-              Waiting for input
+            <Box
+              sx={{
+                width: 64,
+                height: 64,
+                borderRadius: "50%",
+                backgroundColor: alpha(theme.palette.primary.main, 0.08),
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                mb: 3,
+              }}
+            >
+              <InboxIcon sx={{ fontSize: 32, color: "primary.main" }} />
+            </Box>
+            <Typography variant="h5" sx={{ fontWeight: 700, mb: 1.5, letterSpacing: "-0.01em" }}>
+              Your inbox is empty
             </Typography>
-            <Typography variant="body1" sx={{ color: "text.secondary", maxWidth: 400 }}>
-              Open the mobile view to speak or type commands. Tasks and timelines
-              will appear here as they are created.
+            <Typography variant="body1" sx={{ color: "text.secondary", maxWidth: 400, fontWeight: 500 }}>
+              Speak or type commands on your mobile device to populate your workspace.
             </Typography>
-          </Paper>
+          </Box>
         ) : (
           <Grid container spacing={3}>
             {grouped.map(([date, items]) => (
               <Grid size={{ xs: 12, md: 6, lg: 4 }} key={date}>
-                <Paper
-                  elevation={0}
+                <Box
                   sx={{
-                    p: 2.5,
-                    backgroundColor: "background.paper",
-                    border: 1,
-                    borderColor: "divider",
-                    borderRadius: 3,
+                    mb: 2,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    px: 1,
                   }}
                 >
-                  {/* Date header */}
-                  <Box sx={{ display: "flex", alignItems: "center", mb: 2, gap: 1 }}>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                      {date}
-                    </Typography>
-                    <Chip
-                      label={`${items.length}`}
-                      size="small"
-                      sx={{
-                        height: 20,
-                        fontSize: "0.7rem",
-                        minWidth: 28,
-                      }}
-                    />
-                  </Box>
-
-                  {/* Task cards */}
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700, color: "text.primary" }}>
+                    {date}
+                  </Typography>
+                  <Typography variant="caption" sx={{ fontWeight: 700, color: "text.disabled" }}>
+                    {items.length} {items.length === 1 ? "ITEM" : "ITEMS"}
+                  </Typography>
+                </Box>
+                
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
                   {items.map((comp) => (
                     <TaskCard
                       key={comp.id}
@@ -152,7 +160,7 @@ function DashboardWorkspace() {
                       onDelete={handleDelete}
                     />
                   ))}
-                </Paper>
+                </Box>
               </Grid>
             ))}
           </Grid>
@@ -162,11 +170,32 @@ function DashboardWorkspace() {
   );
 }
 
+import { useAuth } from "@/context/AuthContext";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+
 /**
  * Dashboard page -- wraps workspace in the provider.
- * Uses the same session ID so it syncs with the mobile view.
+ * Uses auth guard to ensure user is logged in.
  */
 export default function DashboardPage() {
+  const { token, loading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && !token) {
+      router.push("/auth/login");
+    }
+  }, [token, loading, router]);
+
+  if (loading || !token) {
+    return (
+      <Box sx={{ height: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <Typography variant="h6" color="text.secondary">Authenticating...</Typography>
+      </Box>
+    );
+  }
+
   return (
     <WorkspaceProvider>
       <DashboardWorkspace />

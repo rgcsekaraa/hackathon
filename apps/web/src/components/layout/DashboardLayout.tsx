@@ -5,80 +5,264 @@ import Box from "@mui/material/Box";
 import AppBar from "@mui/material/AppBar";
 import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
-import Chip from "@mui/material/Chip";
+import List from "@mui/material/List";
+import ListItem from "@mui/material/ListItem";
+import ListItemButton from "@mui/material/ListItemButton";
+import ListItemIcon from "@mui/material/ListItemIcon";
+import ListItemText from "@mui/material/ListItemText";
+import Divider from "@mui/material/Divider";
+import HomeIcon from "@mui/icons-material/GridViewOutlined";
+import InboxIcon from "@mui/icons-material/InboxOutlined";
+import PeopleIcon from "@mui/icons-material/PeopleOutlined";
+import DescriptionIcon from "@mui/icons-material/DescriptionOutlined";
+import BuildIcon from "@mui/icons-material/BuildOutlined";
+import ScheduleIcon from "@mui/icons-material/CalendarTodayOutlined";
+import SettingsIcon from "@mui/icons-material/SettingsOutlined";
+import SearchIcon from "@mui/icons-material/SearchOutlined";
+import NotificationsIcon from "@mui/icons-material/NotificationsNoneOutlined";
+import Avatar from "@mui/material/Avatar";
+import Badge from "@mui/material/Badge";
+import InputBase from "@mui/material/InputBase";
+import { alpha, useTheme } from "@mui/material/styles";
 
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { useAuth } from "@/context/AuthContext";
+
+const SIDEBAR_WIDTH = 240;
+const NAVBAR_HEIGHT = 56;
+const FOOTER_HEIGHT = 28;
 
 interface DashboardLayoutProps {
   children: ReactNode;
 }
 
+const NAV_ITEMS = [
+  { text: "Dashboard", icon: <HomeIcon fontSize="small" />, active: true },
+  { text: "Inbox", icon: <InboxIcon fontSize="small" />, badge: 3 },
+  { text: "Schedule", icon: <ScheduleIcon fontSize="small" /> },
+  { text: "Jobs", icon: <BuildIcon fontSize="small" /> },
+  { text: "Customers", icon: <PeopleIcon fontSize="small" /> },
+  { text: "Documents", icon: <DescriptionIcon fontSize="small" /> },
+];
+
 /**
- * Dashboard layout for the web view -- full-width canvas with top bar.
- * This is the "judge POV" surface: spatial workspace with animated layout.
+ * Dashboard layout for the web view -- full-width canvas with persistent sidebar.
+ * Premium enterprise aesthetic inspired by Sophiie.ai.
  */
 export function DashboardLayout({ children }: DashboardLayoutProps) {
+  const theme = useTheme();
+  const { user, logout } = useAuth();
+  const isLight = theme.palette.mode === "light";
+
   return (
     <Box
       sx={{
         display: "flex",
-        flexDirection: "column",
         height: "100vh",
         width: "100%",
         overflow: "hidden",
+        backgroundColor: "background.default",
       }}
     >
-      {/* Top bar */}
-      <AppBar
-        position="static"
-        elevation={0}
+      {/* Sidebar - Enhanced MUI Drawer Style */}
+      <Box
         sx={{
-          backgroundColor: "background.paper",
-          borderBottom: 1,
+          width: SIDEBAR_WIDTH,
+          height: "100vh",
+          backgroundColor: isLight ? "#ffffff" : "background.paper",
+          display: "flex",
+          flexDirection: "column",
+          flexShrink: 0,
+          borderRight: "1px solid",
           borderColor: "divider",
+          zIndex: (theme) => theme.zIndex.drawer + 1,
         }}
       >
-        <Toolbar sx={{ px: 3 }}>
-          <Typography
-            variant="h5"
+        {/* Sidebar Header */}
+        <Box sx={{ height: NAVBAR_HEIGHT, display: "flex", alignItems: "center", px: 2.5, borderBottom: "1px solid", borderColor: "divider" }}>
+          <Box
             sx={{
-              fontWeight: 700,
-              background: "linear-gradient(135deg, #818cf8 0%, #38bdf8 100%)",
-              backgroundClip: "text",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              flexGrow: 1,
+              width: 24,
+              height: 24,
+              borderRadius: "4px",
+              backgroundColor: "primary.main",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontWeight: 800,
+              fontSize: "0.9rem",
+              color: "white",
+              mr: 1.5,
             }}
           >
-            Spatial Voice
+            S
+          </Box>
+          <Typography variant="subtitle1" sx={{ fontWeight: 800, color: "text.primary", letterSpacing: "-0.01em" }}>
+            Spatial
           </Typography>
-          <Typography
-            variant="body2"
-            sx={{ color: "text.secondary", mr: 2 }}
-          >
-            Workspace Dashboard
-          </Typography>
-          <Chip
-            label="Synced"
-            size="small"
-            color="success"
-            variant="outlined"
-            sx={{ mr: 2, fontSize: "0.75rem" }}
-          />
-          <ThemeToggle />
-        </Toolbar>
-      </AppBar>
+        </Box>
 
-      {/* Canvas area */}
+        {/* Sidebar Nav */}
+        <Box sx={{ flex: 1, px: 1, py: 1.5 }}>
+          <List sx={{ gap: 0.25, display: "flex", flexDirection: "column" }}>
+            {NAV_ITEMS.map((item) => (
+              <ListItem key={item.text} disablePadding>
+                <ListItemButton
+                  selected={item.active}
+                  sx={{
+                    borderRadius: "4px",
+                    py: 1,
+                    px: 1.5,
+                    backgroundColor: item.active ? alpha(theme.palette.primary.main, 0.08) : "transparent",
+                    color: item.active ? "primary.main" : "text.secondary",
+                    "&.Mui-selected": {
+                      backgroundColor: alpha(theme.palette.primary.main, 0.08),
+                      color: "primary.main",
+                      "&:hover": { backgroundColor: alpha(theme.palette.primary.main, 0.12) },
+                    },
+                    "&:hover": {
+                      backgroundColor: alpha(theme.palette.action.hover, 0.8),
+                      color: "text.primary",
+                    },
+                  }}
+                >
+                  <ListItemIcon sx={{ minWidth: 32, color: "inherit" }}>
+                    {item.icon}
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={item.text}
+                    primaryTypographyProps={{
+                      fontSize: "0.875rem",
+                      fontWeight: item.active ? 600 : 500,
+                    }}
+                  />
+                  {item.badge && (
+                    <Typography sx={{ fontSize: "0.7rem", fontWeight: 700, color: "primary.main", backgroundColor: alpha(theme.palette.primary.main, 0.1), px: 0.8, py: 0.1, borderRadius: "4px" }}>
+                      {item.badge}
+                    </Typography>
+                  )}
+                </ListItemButton>
+              </ListItem>
+            ))}
+          </List>
+        </Box>
+
+        {/* Sidebar Footer - User Profile */}
+        <Box sx={{ p: 1.5, borderTop: "1px solid", borderColor: "divider" }}>
+          <ListItemButton sx={{ borderRadius: "4px", py: 1 }} onClick={logout}>
+            <ListItemIcon sx={{ minWidth: 36 }}>
+              <Avatar sx={{ width: 28, height: 28, fontSize: "0.75rem", bgcolor: "secondary.main" }}>
+                {user?.full_name?.[0] || user?.email?.[0] || "U"}
+              </Avatar>
+            </ListItemIcon>
+            <ListItemText
+              primary={user?.full_name || "User"}
+              secondary={user?.email || "Account"}
+              primaryTypographyProps={{ fontSize: "0.85rem", fontWeight: 600 }}
+              secondaryTypographyProps={{ fontSize: "0.7rem", sx: { overflow: "hidden", textOverflow: "ellipsis" } }}
+            />
+            <SettingsIcon sx={{ fontSize: 16, color: "text.disabled" }} />
+          </ListItemButton>
+        </Box>
+      </Box>
+
+      {/* Main Content Area */}
       <Box
         sx={{
           flex: 1,
-          overflow: "auto",
-          p: 3,
-          backgroundColor: "background.default",
+          display: "flex",
+          flexDirection: "column",
+          minWidth: 0,
+          height: "100vh",
         }}
       >
-        {children}
+        {/* Top Navbar */}
+        <AppBar
+          position="static"
+          elevation={0}
+          sx={{
+            height: NAVBAR_HEIGHT,
+            backgroundColor: "background.paper",
+            borderBottom: "1px solid",
+            borderColor: "divider",
+            zIndex: (theme) => theme.zIndex.appBar,
+          }}
+        >
+          <Toolbar sx={{ px: 2, minHeight: `${NAVBAR_HEIGHT}px !important` }}>
+            <Box sx={{ display: "flex", alignItems: "center", flex: 1 }}>
+              {/* Global Search Bar - Sharp Style */}
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  backgroundColor: alpha(theme.palette.action.hover, 0.5),
+                  px: 1.5,
+                  py: 0.5,
+                  borderRadius: "4px",
+                  width: 400,
+                  maxWidth: "100%",
+                }}
+              >
+                <SearchIcon sx={{ fontSize: 18, color: "text.disabled", mr: 1 }} />
+                <InputBase
+                  placeholder="Search anything..."
+                  sx={{ fontSize: "0.875rem", width: "100%", color: "text.primary" }}
+                />
+              </Box>
+            </Box>
+
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+              <Badge badgeContent={4} color="error" variant="dot">
+                <NotificationsIcon sx={{ fontSize: 22, color: "text.secondary" }} />
+              </Badge>
+              <Box sx={{ width: 1, height: 24, backgroundColor: "divider", mx: 0.5 }} />
+              <ThemeToggle />
+            </Box>
+          </Toolbar>
+        </AppBar>
+
+        {/* Content Canvas */}
+        <Box
+          sx={{
+            flex: 1,
+            overflow: "auto",
+            backgroundColor: isLight ? "#fbfcfd" : "background.default",
+            position: "relative",
+          }}
+        >
+          <Box sx={{ p: 3, maxWidth: 1400, mx: "auto" }}>
+            {children}
+          </Box>
+        </Box>
+
+        {/* Thin Status Footer */}
+        <Box
+          sx={{
+            height: FOOTER_HEIGHT,
+            backgroundColor: isLight ? "#ffffff" : "background.paper",
+            borderTop: "1px solid",
+            borderColor: "divider",
+            display: "flex",
+            alignItems: "center",
+            px: 2,
+            gap: 2,
+          }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.8 }}>
+            <Box sx={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: "success.main" }} />
+            <Typography sx={{ fontSize: "0.65rem", fontWeight: 700, color: "text.secondary", textTransform: "uppercase" }}>
+              System Operational
+            </Typography>
+          </Box>
+          <Divider orientation="vertical" flexItem sx={{ my: 0.8 }} />
+          <Typography sx={{ fontSize: "0.65rem", fontWeight: 600, color: "text.disabled" }}>
+            V1.0.4-SHARP
+          </Typography>
+          <Box sx={{ flex: 1 }} />
+          <Typography sx={{ fontSize: "0.65rem", fontWeight: 600, color: "text.secondary" }}>
+            SQLite Persistence Active
+          </Typography>
+        </Box>
       </Box>
     </Box>
   );

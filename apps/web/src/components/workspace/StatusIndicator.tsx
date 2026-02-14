@@ -3,12 +3,13 @@
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
 import { alpha, useTheme } from "@mui/material/styles";
+import Typography from "@mui/material/Typography";
 
 type StatusType = "listening" | "thinking" | "updating" | "synced" | "error";
 
 const STATUS_CONFIG: Record<StatusType, { label: string; colorKey: string }> = {
-  listening: { label: "Listening", colorKey: "primary" },
-  thinking: { label: "Thinking", colorKey: "warning" },
+  listening: { label: "Capturing", colorKey: "primary" },
+  thinking: { label: "Processing", colorKey: "warning" },
   updating: { label: "Updating", colorKey: "info" },
   synced: { label: "Synced", colorKey: "success" },
   error: { label: "Error", colorKey: "error" },
@@ -20,7 +21,7 @@ interface StatusIndicatorProps {
 
 /**
  * Visual status indicator showing the current workspace state.
- * Includes a pulsing animation when actively processing.
+ * Refined for a production feel with professional labels and micro-animations.
  */
 export function StatusIndicator({ status }: StatusIndicatorProps) {
   const theme = useTheme();
@@ -39,36 +40,34 @@ export function StatusIndicator({ status }: StatusIndicatorProps) {
 
   return (
     <Box sx={{ display: "inline-flex", alignItems: "center", gap: 1 }}>
-      {/* Pulse dot */}
+      {/* Micro-dot Indicator */}
       <Box
         sx={{
-          width: 8,
-          height: 8,
+          width: 6,
+          height: 6,
           borderRadius: "50%",
           backgroundColor: color,
-          boxShadow: `0 0 8px ${alpha(color, 0.5)}`,
           ...(isActive && {
-            animation: "pulse 1.5s ease-in-out infinite",
-            "@keyframes pulse": {
-              "0%": { transform: "scale(1)", opacity: 1 },
-              "50%": { transform: "scale(1.4)", opacity: 0.6 },
-              "100%": { transform: "scale(1)", opacity: 1 },
+            animation: "pulseMicro 2s ease-in-out infinite",
+            "@keyframes pulseMicro": {
+              "0%": { opacity: 1 },
+              "50%": { opacity: 0.4 },
+              "100%": { opacity: 1 },
             },
           }),
         }}
       />
-      <Chip
-        label={config.label}
-        size="small"
+      <Typography
+        variant="caption"
         sx={{
-          height: 22,
-          fontSize: "0.7rem",
           fontWeight: 600,
-          backgroundColor: alpha(color, 0.1),
-          color: color,
-          border: "none",
+          color: "text.secondary",
+          fontSize: "0.75rem",
+          letterSpacing: "0.02em",
         }}
-      />
+      >
+        {config.label}
+      </Typography>
     </Box>
   );
 }

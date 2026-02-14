@@ -4,6 +4,8 @@ import { useCallback } from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Divider from "@mui/material/Divider";
+import InboxIcon from "@mui/icons-material/InboxOutlined";
+import { useTheme, alpha } from "@mui/material/styles";
 
 import { MobileLayout } from "@/components/layout/MobileLayout";
 import { WorkspaceProvider, useWorkspace } from "@/components/providers/WorkspaceProvider";
@@ -18,6 +20,8 @@ import { ActionChips } from "@/components/input/ActionChips";
  */
 function MobileWorkspace() {
   const { components, serverStatus, sendAction } = useWorkspace();
+  const theme = useTheme();
+  const isLight = theme.palette.mode === "light";
 
   const handleToggleComplete = useCallback(
     (id: string) => {
@@ -35,49 +39,74 @@ function MobileWorkspace() {
 
   return (
     <MobileLayout>
-      {/* Status + workspace header */}
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
-        <Typography variant="h6" sx={{ fontWeight: 600 }}>
-          Your Workspace
+      {/* Header section */}
+      <Box sx={{ pt: 1, pb: 3 }}>
+        <Typography variant="h4" sx={{ fontWeight: 800, letterSpacing: "-0.03em", mb: 0.5 }}>
+          Inbox
         </Typography>
-        <StatusIndicator status={serverStatus} />
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <StatusIndicator status={serverStatus} />
+          <Box sx={{ width: 4, height: 4, borderRadius: "50%", backgroundColor: "text.disabled", mx: 0.5 }} />
+          <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 600 }}>
+            {components.length} {components.length === 1 ? "TASK" : "TASKS"}
+          </Typography>
+        </Box>
       </Box>
 
       {/* Task list */}
-      <Box sx={{ flex: 1, minHeight: 0, overflow: "auto", mb: 2 }}>
+      <Box sx={{ flex: 1, minHeight: 0, overflow: "auto", mb: 3 }}>
         {components.length === 0 ? (
           <Box
             sx={{
-              py: 6,
+              py: 10,
+              px: 3,
               textAlign: "center",
-              border: 1,
+              backgroundColor: isLight ? "white" : alpha(theme.palette.background.paper, 0.4),
+              border: "1px solid",
               borderColor: "divider",
-              borderStyle: "dashed",
               borderRadius: 3,
+              boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
             }}
           >
-            <Typography variant="body1" sx={{ color: "text.secondary", mb: 1 }}>
-              No tasks yet
+            <Box
+              sx={{
+                width: 48,
+                height: 48,
+                borderRadius: "50%",
+                backgroundColor: alpha(theme.palette.primary.main, 0.08),
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                mx: "auto",
+                mb: 2,
+              }}
+            >
+              <InboxIcon sx={{ fontSize: 24, color: "primary.main" }} />
+            </Box>
+            <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
+              All clear for now
             </Typography>
-            <Typography variant="body2" sx={{ color: "text.secondary" }}>
-              Speak or type to start planning your day
+            <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 500 }}>
+              Speak or type to capture ideas and plan your workspace.
             </Typography>
           </Box>
         ) : (
-          components.map((comp) => (
-            <TaskCard
-              key={comp.id}
-              id={comp.id}
-              title={comp.title}
-              description={comp.description}
-              priority={comp.priority}
-              date={comp.date}
-              timeSlot={comp.timeSlot}
-              completed={comp.completed}
-              onToggleComplete={handleToggleComplete}
-              onDelete={handleDelete}
-            />
-          ))
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+            {components.map((comp) => (
+              <TaskCard
+                key={comp.id}
+                id={comp.id}
+                title={comp.title}
+                description={comp.description}
+                priority={comp.priority}
+                date={comp.date}
+                timeSlot={comp.timeSlot}
+                completed={comp.completed}
+                onToggleComplete={handleToggleComplete}
+                onDelete={handleDelete}
+              />
+            ))}
+          </Box>
         )}
       </Box>
 
@@ -86,14 +115,13 @@ function MobileWorkspace() {
         sx={{
           position: "sticky",
           bottom: 0,
-          backgroundColor: "background.default",
+          backgroundColor: isLight ? "#f8fafc" : "background.default",
           pt: 1,
           pb: 2,
         }}
       >
-        <Divider sx={{ mb: 1.5 }} />
         <ActionChips />
-        <Box sx={{ display: "flex", gap: 1.5, mt: 1.5, alignItems: "center" }}>
+        <Box sx={{ display: "flex", gap: 1.5, mt: 2, alignItems: "center" }}>
           <VoiceCapture />
           <Box sx={{ flex: 1 }}>
             <TextInput />

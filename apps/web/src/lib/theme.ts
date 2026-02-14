@@ -3,52 +3,56 @@
 import { createTheme, type ThemeOptions } from "@mui/material/styles";
 
 /**
- * Shared theme tokens used by both light and dark themes.
- * "Quiet premium ops" aesthetic -- clean typography, smooth transitions.
+ * Production-grade theme tokens inspired by Sophiie.ai
+ * "Premium Enterprise" aesthetic -- deep navy, clean slate, sharp typography.
  */
 const sharedOptions: ThemeOptions = {
   typography: {
-    fontFamily: "'Inter', 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif",
-    h1: { fontWeight: 700, letterSpacing: "-0.02em" },
-    h2: { fontWeight: 700, letterSpacing: "-0.01em" },
-    h3: { fontWeight: 600 },
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+    h1: { fontWeight: 800, letterSpacing: "-0.025em" },
+    h2: { fontWeight: 700, letterSpacing: "-0.02em" },
+    h3: { fontWeight: 700, letterSpacing: "-0.015em" },
     h4: { fontWeight: 600 },
-    h5: { fontWeight: 500 },
-    h6: { fontWeight: 500 },
+    h5: { fontWeight: 600 },
+    h6: { fontWeight: 600 },
     subtitle1: { fontWeight: 500, letterSpacing: "0.01em" },
-    body1: { lineHeight: 1.6 },
-    body2: { lineHeight: 1.5 },
-    button: { fontWeight: 600, textTransform: "none" },
+    body1: { fontSize: "0.9375rem", lineHeight: 1.6 },
+    body2: { fontSize: "0.875rem", lineHeight: 1.57 },
+    button: { fontWeight: 600, textTransform: "none", fontSize: "0.875rem" },
   },
   shape: {
-    borderRadius: 12,
+    borderRadius: 4,
   },
   components: {
     MuiButton: {
       styleOverrides: {
         root: {
-          borderRadius: 10,
-          padding: "8px 20px",
-          transition: "all 0.2s ease-in-out",
+          borderRadius: 4,
+          padding: "7px 16px",
+          transition: "none", // Instant feel
+          textTransform: "none",
+          fontWeight: 600,
+        },
+        contained: {
+          boxShadow: "none",
+          "&:hover": {
+            boxShadow: "none",
+            transform: "none",
+          },
         },
       },
       defaultProps: {
         disableElevation: true,
+        disableRipple: true, // Extreme instant feel
       },
     },
     MuiCard: {
       styleOverrides: {
         root: {
-          borderRadius: 16,
-          transition: "transform 0.2s ease, box-shadow 0.2s ease",
-        },
-      },
-    },
-    MuiChip: {
-      styleOverrides: {
-        root: {
-          borderRadius: 8,
-          fontWeight: 500,
+          borderRadius: 4,
+          boxShadow: "none",
+          border: "1px solid rgba(0, 0, 0, 0.08)",
+          transition: "none",
         },
       },
     },
@@ -56,13 +60,25 @@ const sharedOptions: ThemeOptions = {
       styleOverrides: {
         root: {
           backgroundImage: "none",
+          boxShadow: "none",
         },
       },
     },
-    MuiIconButton: {
+    MuiChip: {
       styleOverrides: {
         root: {
-          transition: "all 0.15s ease-in-out",
+          borderRadius: 4,
+          fontWeight: 600,
+        },
+      },
+    },
+    MuiAppBar: {
+      styleOverrides: {
+        root: {
+          backgroundColor: "#ffffff",
+          color: "#0f172a",
+          borderBottom: "1px solid rgba(0, 0, 0, 0.08)",
+          boxShadow: "none",
         },
       },
     },
@@ -70,31 +86,25 @@ const sharedOptions: ThemeOptions = {
 };
 
 /**
- * Light theme -- clean whites with subtle depth.
+ * Sophiie Light Theme -- Professional white/slate palette.
  */
 export const lightTheme = createTheme({
   ...sharedOptions,
   palette: {
     mode: "light",
     primary: {
-      main: "#4f46e5",
-      light: "#818cf8",
-      dark: "#3730a3",
+      main: "#1d4ed8", // Professional Blue
+      light: "#3b82f6",
+      dark: "#1e40af",
       contrastText: "#ffffff",
     },
     secondary: {
-      main: "#0ea5e9",
-      light: "#38bdf8",
-      dark: "#0369a1",
+      main: "#0f172a", // Deep Navy
+      light: "#334155",
+      dark: "#020617",
     },
-    error: {
-      main: "#ef4444",
-    },
-    warning: {
-      main: "#f59e0b",
-    },
-    success: {
-      main: "#10b981",
+    accent: {
+      main: "#00d1ff", // Sophiie Teal
     },
     background: {
       default: "#f8fafc",
@@ -102,48 +112,55 @@ export const lightTheme = createTheme({
     },
     text: {
       primary: "#0f172a",
-      secondary: "#475569",
+      secondary: "#64748b",
+      disabled: "#94a3b8",
     },
-    divider: "rgba(0, 0, 0, 0.08)",
+    divider: "rgba(0, 0, 0, 0.06)",
+    success: { main: "#10b981" },
+    error: { main: "#ef4444" },
+    warning: { main: "#f59e0b" },
+    info: { main: "#0ea5e9" },
   },
 });
 
 /**
- * Dark theme -- deep slate with vibrant accents.
- * This is the default for the "ops dashboard" feel.
+ * Sophiie Dark Theme -- Refined navy/slate.
  */
 export const darkTheme = createTheme({
   ...sharedOptions,
   palette: {
     mode: "dark",
     primary: {
-      main: "#818cf8",
-      light: "#a5b4fc",
-      dark: "#6366f1",
-      contrastText: "#0f172a",
+      main: "#3b82f6",
+      light: "#60a5fa",
+      dark: "#2563eb",
+      contrastText: "#ffffff",
     },
     secondary: {
-      main: "#38bdf8",
-      light: "#7dd3fc",
-      dark: "#0ea5e9",
-    },
-    error: {
-      main: "#f87171",
-    },
-    warning: {
-      main: "#fbbf24",
-    },
-    success: {
-      main: "#34d399",
+      main: "#94a3b8",
+      light: "#cbd5e1",
+      dark: "#64748b",
     },
     background: {
-      default: "#0c1222",
-      paper: "#131b2e",
+      default: "#020617", // Deeper Navy
+      paper: "#0f172a",
     },
     text: {
-      primary: "#f1f5f9",
+      primary: "#f8fafc",
       secondary: "#94a3b8",
+      disabled: "#64748b",
     },
-    divider: "rgba(255, 255, 255, 0.08)",
+    divider: "rgba(255, 255, 255, 0.06)",
   },
 });
+
+// Add custom palette types for TS
+declare module "@mui/material/styles" {
+  interface Palette {
+    accent: Palette["primary"];
+  }
+  interface PaletteOptions {
+    accent?: PaletteOptions["primary"];
+  }
+}
+
