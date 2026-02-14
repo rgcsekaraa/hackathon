@@ -34,8 +34,9 @@ import ChatIcon from "@mui/icons-material/ChatBubbleOutline";
 import ClickAwayListener from "@mui/material/ClickAwayListener";
 import CircularProgress from "@mui/material/CircularProgress";
 import Popover from "@mui/material/Popover";
-
+import AutoFixHighIcon from "@mui/icons-material/AutoFixHighOutlined";
 import Drawer from "@mui/material/Drawer";
+import Button from "@mui/material/Button";
 
 const SIDEBAR_WIDTH = 260; // Slightly wider for M3 labels
 const NAVBAR_HEIGHT = 64; 
@@ -102,7 +103,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             boxSizing: "border-box",
             borderRight: "1px solid",
             borderColor: "divider",
-            backgroundColor: "background.paper",
+            backgroundColor: alpha(theme.palette.background.paper, 0.8),
+            backdropFilter: "blur(20px)",
             display: "flex",
             flexDirection: "column",
           },
@@ -114,23 +116,24 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             sx={{
               width: 32,
               height: 32,
-              borderRadius: "8px",
+              borderRadius: "10px",
               backgroundColor: "primary.main",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               fontWeight: 800,
               color: "white",
+              boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.4)}`,
             }}
           >
-            S
+            O
           </Box>
-          <Typography variant="subtitle1" sx={{ fontWeight: 800, letterSpacing: "-0.02em" }}>
-            Sophiie Orbit
+          <Typography variant="subtitle1" sx={{ fontWeight: 800, letterSpacing: "-0.02em", color: "text.primary" }}>
+            ORBIT
           </Typography>
         </Box>
 
-        <Divider />
+        <Divider sx={{ opacity: 0.5 }} />
 
         {/* M3 Navigation List */}
         <Box sx={{ overflow: "auto", flex: 1, p: 1.5 }}>
@@ -140,16 +143,16 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 <ListItemButton
                   selected={item.active}
                   sx={{
-                    borderRadius: "100px",
-                    mb: 0.25,
+                    borderRadius: "12px",
+                    mb: 0.5,
                     px: 2,
                     py: 1.2,
                     "&.Mui-selected": {
-                      backgroundColor: alpha(theme.palette.primary.main, 0.12),
+                      backgroundColor: alpha(theme.palette.primary.main, 0.1),
                       color: "primary.main",
                       "& .MuiListItemIcon-root": { color: "primary.main" },
                     },
-                    "&:hover": { backgroundColor: alpha(theme.palette.action.hover, 0.8) },
+                    "&:hover": { backgroundColor: alpha(theme.palette.action.hover, 0.4) },
                   }}
                 >
                   <ListItemIcon sx={{ minWidth: 40, color: item.active ? "primary.main" : "text.secondary" }}>
@@ -157,48 +160,46 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                   </ListItemIcon>
                   <ListItemText
                     primary={item.text}
-                    primaryTypographyProps={{ fontSize: "0.875rem", fontWeight: item.active ? 700 : 500 }}
+                    primaryTypographyProps={{ fontSize: "0.85rem", fontWeight: item.active ? 700 : 600, letterSpacing: "0.01em" }}
                   />
                   {item.badge && (
-                    <Badge badgeContent={item.badge} color="primary" sx={{ mr: 1 }} />
+                    <Badge 
+                      badgeContent={item.badge} 
+                      color="primary" 
+                      sx={{ 
+                        mr: 1,
+                        "& .MuiBadge-badge": { fontWeight: 800, fontSize: "0.65rem" }
+                      }} 
+                    />
                   )}
-                </ListItemButton>
-              </ListItem>
-            ))}
-          </List>
-
-          <Box sx={{ mt: 4, mb: 1, px: 2 }}>
-            <Typography variant="caption" sx={{ fontWeight: 800, color: "text.disabled", textTransform: "uppercase", letterSpacing: "0.08em" }}>
-              Project Folders
-            </Typography>
-          </Box>
-          <List sx={{ p: 0 }}>
-            {["Work", "Personal", "Hackathon"].map((project) => (
-              <ListItem key={project} disablePadding>
-                <ListItemButton sx={{ borderRadius: "100px", px: 2, py: 0.8 }}>
-                  <ListItemIcon sx={{ minWidth: 40 }}>
-                    <FolderIcon fontSize="small" />
-                  </ListItemIcon>
-                  <ListItemText primary={project} primaryTypographyProps={{ fontSize: "0.85rem", fontWeight: 500 }} />
                 </ListItemButton>
               </ListItem>
             ))}
           </List>
         </Box>
 
-        <Divider />
+        <Divider sx={{ opacity: 0.5 }} />
 
         {/* User Profile Section */}
         <Box sx={{ p: 2 }}>
-          <ListItemButton sx={{ borderRadius: "12px", p: 1 }} onClick={logout}>
-            <Avatar sx={{ width: 32, height: 32, mr: 1.5, fontSize: "0.8rem", bgcolor: "secondary.main" }}>
+          <ListItemButton 
+            sx={{ 
+              borderRadius: "16px", 
+              p: 1,
+              backgroundColor: alpha(theme.palette.surfaceVariant.main, 0.3),
+              border: "1px solid",
+              borderColor: "divider"
+            }} 
+            onClick={logout}
+          >
+            <Avatar sx={{ width: 32, height: 32, mr: 1.5, fontSize: "0.8rem", fontWeight: 700, bgcolor: "primary.main" }}>
               {user?.full_name?.[0] || "U"}
             </Avatar>
             <ListItemText
-              primary={user?.full_name || "User"}
-              secondary={user?.email || "Account"}
-              primaryTypographyProps={{ fontSize: "0.85rem", fontWeight: 600, noWrap: true }}
-              secondaryTypographyProps={{ fontSize: "0.7rem", noWrap: true }}
+              primary={user?.full_name || "Enterprise User"}
+              secondary="Sign Out"
+              primaryTypographyProps={{ fontSize: "0.8rem", fontWeight: 700, noWrap: true }}
+              secondaryTypographyProps={{ fontSize: "0.65rem", fontWeight: 600, color: "primary.main" }}
             />
           </ListItemButton>
         </Box>
@@ -206,56 +207,80 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
       <Box sx={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
         {/* Top App Bar */}
-        <AppBar position="static" color="inherit" elevation={0} sx={{ borderBottom: "1px solid", borderColor: "divider" }}>
+        <AppBar 
+          position="static" 
+          color="inherit" 
+          elevation={0} 
+          sx={{ 
+            borderBottom: "1px solid", 
+            borderColor: "divider",
+            backgroundColor: alpha(theme.palette.background.default, 0.5),
+            backdropFilter: "blur(8px)"
+          }}
+        >
           <Toolbar sx={{ px: 3, minHeight: NAVBAR_HEIGHT }}>
             <Box sx={{ display: "flex", alignItems: "center", flex: 1 }}>
-              {/* M3 Tonal Search Bar */}
               <Box
                 sx={{
                   display: "flex",
                   alignItems: "center",
-                  backgroundColor: alpha(theme.palette.action.hover, 0.4),
-                  borderRadius: "28px",
+                  backgroundColor: alpha(theme.palette.surfaceVariant.main, 0.4),
+                  borderRadius: "14px",
                   px: 2,
                   py: 0.8,
                   width: 440,
                   maxWidth: "100%",
+                  border: "1px solid",
+                  borderColor: "divider"
                 }}
               >
-                <SearchIcon sx={{ color: "text.secondary", mr: 1, fontSize: 20 }} />
+                <SearchIcon sx={{ color: "text.secondary", mr: 1, fontSize: 18 }} />
                 <InputBase
-                  placeholder="Search notes, tasks, files..."
+                  placeholder="Universal Command (⌘ + K)"
                   fullWidth
                   value={searchQuery}
                   onChange={handleSearch}
                   onFocus={(e) => setAnchorEl(e.currentTarget.parentElement as HTMLDivElement)}
-                  sx={{ fontSize: "0.9rem" }}
+                  sx={{ fontSize: "0.85rem", fontWeight: 500 }}
                 />
                 {searching && <CircularProgress size={16} sx={{ ml: 1 }} />}
               </Box>
             </Box>
 
-            <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-              <IconButton size="small"><NotificationsIcon /></IconButton>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
               <ThemeToggle />
               <IconButton 
-                color={showChat ? "primary" : "default"} 
                 onClick={() => setShowChat(!showChat)}
                 sx={{ 
                   borderRadius: "12px", 
-                  backgroundColor: showChat ? alpha(theme.palette.primary.main, 0.1) : "transparent" 
+                  color: showChat ? "primary.main" : "text.secondary",
+                  backgroundColor: showChat ? alpha(theme.palette.primary.main, 0.1) : "transparent",
+                  border: "1px solid",
+                  borderColor: showChat ? "primary.main" : "divider"
                 }}
               >
                 <ChatIcon />
               </IconButton>
+              <Button
+                variant="contained"
+                startIcon={<AutoFixHighIcon />}
+                size="small"
+                sx={{ 
+                  borderRadius: "12px", 
+                  fontWeight: 800,
+                  boxShadow: `0 4px 14px ${alpha(theme.palette.primary.main, 0.3)}`
+                }}
+              >
+                COMMAND CENTER
+              </Button>
             </Box>
           </Toolbar>
         </AppBar>
 
         {/* Content Area */}
         <Box sx={{ flex: 1, display: "flex", overflow: "hidden" }}>
-          <Box sx={{ flex: 1, overflow: "auto", position: "relative", p: 3 }}>
-            <Box sx={{ maxWidth: 1200, mx: "auto" }}>
+          <Box sx={{ flex: 1, overflow: "auto", position: "relative", p: 4 }}>
+            <Box sx={{ maxWidth: 1400, mx: "auto" }}>
               {children}
             </Box>
           </Box>
@@ -263,12 +288,13 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         </Box>
 
         {/* M3 Status Footer */}
-        <Box sx={{ height: 28, px: 2, borderTop: "1px solid", borderColor: "divider", display: "flex", alignItems: "center", gap: 2 }}>
+        <Box sx={{ height: 32, px: 3, borderTop: "1px solid", borderColor: "divider", display: "flex", alignItems: "center", gap: 3, backgroundColor: "background.paper" }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <Box sx={{ width: 6, height: 6, borderRadius: "50%", bgcolor: "success.main" }} />
-            <Typography variant="caption" sx={{ fontWeight: 700, color: "text.secondary" }}>SYSTEM ONLINE</Typography>
+            <Box sx={{ width: 6, height: 6, borderRadius: "50%", bgcolor: "success.main", boxShadow: "0 0 8px rgba(16, 185, 129, 0.6)" }} />
+            <Typography variant="caption" sx={{ fontWeight: 800, color: "text.primary", letterSpacing: "0.02em" }}>ORBIT CORE STABLE</Typography>
           </Box>
-          <Typography variant="caption" sx={{ color: "text.disabled" }}>V1.1-M3</Typography>
+          <Box sx={{ flex: 1 }} />
+          <Typography variant="caption" sx={{ color: "text.disabled", fontWeight: 700 }}>V1.2-ORBIT-DEMO</Typography>
         </Box>
       </Box>
 

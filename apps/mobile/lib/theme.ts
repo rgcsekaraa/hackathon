@@ -22,42 +22,58 @@ export function useThemeMode() {
  */
 export const COLORS = {
   dark: {
-    background: "#0c1222",
-    surface: "#131b2e",
-    surfaceHover: "#1a2440",
-    primary: "#818cf8",
-    primaryLight: "#a5b4fc",
-    secondary: "#38bdf8",
-    text: "#f1f5f9",
-    textSecondary: "#94a3b8",
+    background: "#020617", // Deep Slate
+    surface: "#0f172a", // Slate 900
+    surfaceHover: "#1e293b", // Slate 800
+    primary: "#6366f1", // Indigo 500
+    primaryLight: "#818cf8", // Indigo 400
+    secondary: "#a855f7", // Purple 500
+    text: "#f8fafc", // Slate 50
+    textSecondary: "#94a3b8", // Slate 400
     border: "rgba(255, 255, 255, 0.08)",
-    success: "#34d399",
-    error: "#f87171",
-    warning: "#fbbf24",
+    success: "#10b981", // Emerald 500
+    error: "#ef4444", // Red 500
+    warning: "#f59e0b", // Amber 500
     urgent: "#ef4444",
     high: "#f59e0b",
     normal: "#6366f1",
     low: "#94a3b8",
   },
   light: {
-    background: "#f8fafc",
+    background: "#f8fafc", // Slate 50
     surface: "#ffffff",
-    surfaceHover: "#f1f5f9",
-    primary: "#4f46e5",
-    primaryLight: "#818cf8",
-    secondary: "#0ea5e9",
-    text: "#0f172a",
-    textSecondary: "#475569",
+    surfaceHover: "#f1f5f9", // Slate 100
+    primary: "#4f46e5", // Indigo 600
+    primaryLight: "#6366f1", // Indigo 500
+    secondary: "#9333ea", // Purple 600
+    text: "#0f172a", // Slate 900
+    textSecondary: "#64748b", // Slate 500
     border: "rgba(0, 0, 0, 0.08)",
-    success: "#10b981",
-    error: "#ef4444",
-    warning: "#f59e0b",
-    urgent: "#ef4444",
-    high: "#f59e0b",
-    normal: "#6366f1",
-    low: "#94a3b8",
+    success: "#059669", // Emerald 600
+    error: "#dc2626", // Red 600
+    warning: "#d97706", // Amber 600
+    urgent: "#dc2626",
+    high: "#d97706",
+    normal: "#4f46e5",
+    low: "#64748b",
   },
 } as const;
+
+/**
+ * Glassmorphism styles for React Native.
+ */
+export const GLASS = {
+  dark: {
+    backgroundColor: "rgba(15, 23, 42, 0.6)",
+    borderColor: "rgba(255, 255, 255, 0.08)",
+    borderWidth: 1,
+  },
+  light: {
+    backgroundColor: "rgba(255, 255, 255, 0.6)",
+    borderColor: "rgba(0, 0, 0, 0.05)",
+    borderWidth: 1,
+  },
+};
 
 export function useColors() {
   const { mode } = useThemeMode();

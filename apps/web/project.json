@@ -1,0 +1,19 @@
+{
+  "name": "web",
+  "targets": {
+    "serve": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npx next dev -p 3000",
+        "cwd": "apps/web"
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npx next build",
+        "cwd": "apps/web"
+      }
+    }
+  }
+}

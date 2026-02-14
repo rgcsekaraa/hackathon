@@ -8,6 +8,8 @@
     "packages/*"
   ],
   "scripts": {
+    "dev": "nx run-many --target=serve --all --parallel=3",
+    "build": "nx run-many --target=build --all",
     "dev:web": "nx dev web",
     "dev:api": "cd apps/api && uvicorn main:app --reload --host 0.0.0.0 --port 8000",
     "build:web": "nx build web",

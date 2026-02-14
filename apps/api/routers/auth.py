@@ -6,8 +6,12 @@ from sqlalchemy import select
 from db.session import get_db
 from models.user import User
 from core.auth import get_password_hash, verify_password, create_access_token
-from core.deps import get_current_user
+from core.deps import get_current_user, oauth2_scheme
 from models.token import TokenBlacklist
+from schemas.auth import (
+    Token, UserCreate, UserLogin, UserOut, 
+    ForgotPasswordRequest, ResetPasswordRequest
+)
 from datetime import datetime, timedelta, timezone
 import logging
 

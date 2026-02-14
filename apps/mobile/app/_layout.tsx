@@ -30,7 +30,7 @@ export default function RootLayout() {
             screenOptions={{
               headerShown: false,
               contentStyle: {
-                backgroundColor: mode === "dark" ? "#0c1222" : "#f8fafc",
+                backgroundColor: mode === "dark" ? "#020617" : "#f8fafc",
               },
               animation: "fade",
             }}

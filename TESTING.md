@@ -9,52 +9,41 @@ This document provides step-by-step instructions to set up, run, and test Sophii
 - npm or yarn
 - Virtualenv (recommended for Python)
 
-## 1. Backend Setup (API)
+## 1. Unified Start (Recommended)
 
-The backend is built with FastAPI and handles data persistence and real-time communication.
-
+Run all services (Web, API, Mobile) in parallel:
 ```bash
-# Navigate to the api directory
-cd apps/api
-
-# Create a virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Initialize the database
-# The database file (spatial_voice.db) is automatically created on first run.
-# Ensure the directory has write permissions.
-
-# Start the backend server
-python main.py
-```
-
-The backend will be available at `http://localhost:8000` and `ws://localhost:8000`.
-
-## 2. Frontend Setup (Web)
-
-The frontend is a Next.js application.
-
-```bash
-# Navigate to the web directory
-cd apps/web
-
-# Install dependencies
-npm install
-
-# Configure environment variables
-# Create a .env.local file if it doesn't exist
-# NEXT_PUBLIC_API_URL=http://localhost:8000
-# NEXT_PUBLIC_WS_URL=ws://localhost:8000
-
-# Start the development server
 npm run dev
 ```
+This command uses Nx to launch:
+- **Web Dashboard**: `http://localhost:3000`
+- **API Server**: `http://localhost:8000`
+- **Mobile (Expo)**: QR code in terminal
 
-The frontend will be available at `http://localhost:3000`.
+## 2. Manual Start (Individual Services)
+
+If you prefer running services in separate terminals or need to debug a specific service:
+
+### Frontend (Web)
+```bash
+npx nx serve web
+# or
+cd apps/web && npm run dev
+```
+
+### Backend (API)
+```bash
+npx nx serve api
+# or
+cd apps/api && source .venv/bin/activate && uvicorn main:app --reload
+```
+
+### Mobile (Expo)
+```bash
+npx nx serve mobile
+# or
+cd apps/mobile && npx expo start
+```
 
 ## 3. Verification Steps
 

@@ -56,7 +56,35 @@ Optimized for productivity, the dashboard provides a compact yet readable view o
 
 ---
 
-## Getting Started
+## Quick Start
+
+1.  **Install Dependencies**:
+    ```bash
+    npm install
+    ```
+
+2.  **Start Everything (Web + API + Mobile)**:
+    ```bash
+    npm run dev
+    ```
+    This launches:
+    - **Web Dashboard**: [http://localhost:3000](http://localhost:3000)
+    - **API Server**: [http://localhost:8000](http://localhost:8000)
+    - **Expo Mobile**: Scannable QR code in terminal
+
+3.  **Build Everything**:
+    ```bash
+    npm run build
+    ```
+    This builds:
+    - **Web**: Production build (`.next`)
+    - **Mobile**: Web bundle (`dist`)
+    - **API**: (No-op check)
+
+4.  **Manual Start (Optional)**:
+    - Web: `nx serve web`
+    - API: `nx serve api`
+    - Mobile: `nx serve mobile`
 
 Refer to [TESTING.md](TESTING.md) for detailed instructions on how to set up and run Sophiie Space locally.
 
