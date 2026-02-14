@@ -1,0 +1,20 @@
+{
+  "name": "sophiie-spatial",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Realtime multimodal workspace: voice, text, and touch create spatial plans",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "nx dev web",
+    "dev:api": "cd apps/api && uvicorn main:app --reload --host 0.0.0.0 --port 8000",
+    "build:web": "nx build web",
+    "lint": "nx run-many --target=lint",
+    "typecheck": "nx run-many --target=typecheck"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

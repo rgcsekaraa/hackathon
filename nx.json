@@ -1,0 +1,26 @@
+{
+  "installation": {
+    "version": "22.5.1"
+  },
+  "defaultProject": "web",
+  "targetDefaults": {
+    "build": {
+      "dependsOn": ["^build"],
+      "cache": true
+    },
+    "lint": {
+      "cache": true
+    },
+    "dev": {
+      "cache": false
+    }
+  },
+  "namedInputs": {
+    "default": ["{projectRoot}/**/*"],
+    "production": [
+      "default",
+      "!{projectRoot}/**/*.spec.ts",
+      "!{projectRoot}/**/*.test.ts"
+    ]
+  }
+}
