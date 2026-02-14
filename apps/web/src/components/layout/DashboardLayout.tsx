@@ -1,10 +1,11 @@
 "use client";
 
-import { type ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import Box from "@mui/material/Box";
 import AppBar from "@mui/material/AppBar";
 import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
+import IconButton from "@mui/material/IconButton";
 import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
 import ListItemButton from "@mui/material/ListItemButton";
@@ -27,6 +28,11 @@ import { alpha, useTheme } from "@mui/material/styles";
 
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useAuth } from "@/context/AuthContext";
+import { AIChatSidebar } from "@/components/AIChatSidebar";
+import ChatIcon from "@mui/icons-material/ChatBubbleOutline";
+import ClickAwayListener from "@mui/material/ClickAwayListener";
+import CircularProgress from "@mui/material/CircularProgress";
+import Popover from "@mui/material/Popover";
 
 const SIDEBAR_WIDTH = 240;
 const NAVBAR_HEIGHT = 56;
@@ -51,8 +57,36 @@ const NAV_ITEMS = [
  */
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const theme = useTheme();
-  const { user, logout } = useAuth();
+  const { user, logout, token } = useAuth();
   const isLight = theme.palette.mode === "light";
+  
+  const [showChat, setShowChat] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [anchorEl, setAnchorEl] = useState<HTMLDivElement | null>(null);
+
+  const handleSearch = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const q = e.target.value;
+    setSearchQuery(q);
+    if (!q.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    setSearching(true);
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/search?q=${encodeURIComponent(q)}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSearchResults(data.results);
+      }
+    } finally {
+      setSearching(false);
+    }
+  };
 
   return (
     <Box
@@ -145,6 +179,24 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               </ListItem>
             ))}
           </List>
+
+          <Box sx={{ mt: 3, px: 2, mb: 1 }}>
+            <Typography variant="caption" sx={{ fontWeight: 800, color: "text.disabled", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              Project Folders
+            </Typography>
+          </Box>
+          <List sx={{ px: 1, gap: 0.25, display: "flex", flexDirection: "column" }}>
+            {["Work", "Personal", "Hackathon"].map((project) => (
+              <ListItem key={project} disablePadding>
+                <ListItemButton sx={{ borderRadius: "4px", py: 0.8, px: 1.5 }}>
+                  <ListItemIcon sx={{ minWidth: 32 }}>
+                    <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: project === "Work" ? "primary.main" : "text.disabled" }} />
+                  </ListItemIcon>
+                  <ListItemText primary={project} primaryTypographyProps={{ fontSize: "0.85rem", fontWeight: 500 }} />
+                </ListItemButton>
+              </ListItem>
+            ))}
+          </List>
         </Box>
 
         {/* Sidebar Footer - User Profile */}
@@ -192,6 +244,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             <Box sx={{ display: "flex", alignItems: "center", flex: 1 }}>
               {/* Global Search Bar - Sharp Style */}
               <Box
+                id="search-container"
                 sx={{
                   display: "flex",
                   alignItems: "center",
@@ -201,13 +254,47 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                   borderRadius: "4px",
                   width: 400,
                   maxWidth: "100%",
+                  position: "relative",
                 }}
               >
                 <SearchIcon sx={{ fontSize: 18, color: "text.disabled", mr: 1 }} />
                 <InputBase
                   placeholder="Search anything..."
+                  value={searchQuery}
+                  onChange={handleSearch}
+                  onFocus={(e) => setAnchorEl(e.currentTarget.parentElement as HTMLDivElement)}
                   sx={{ fontSize: "0.875rem", width: "100%", color: "text.primary" }}
                 />
+                
+                {searching && <CircularProgress size={14} sx={{ ml: 1 }} />}
+
+                <Popover
+                  open={Boolean(anchorEl) && (searchResults.length > 0 || searching)}
+                  anchorEl={anchorEl}
+                  onClose={() => setAnchorEl(null)}
+                  anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+                  transitionDuration={0}
+                  slotProps={{
+                    paper: {
+                      sx: { width: 400, mt: 1, p: 1, borderRadius: "4px", boxShadow: "0 4px 20px rgba(0,0,0,0.15)" }
+                    }
+                  }}
+                >
+                  <List disablePadding>
+                    {searchResults.map((res) => (
+                      <ListItem key={res.id} disablePadding>
+                        <ListItemButton sx={{ borderRadius: "4px" }} onClick={() => setAnchorEl(null)}>
+                          <ListItemText
+                            primary={res.title}
+                            secondary={res.snippet}
+                            primaryTypographyProps={{ fontSize: "0.85rem", fontWeight: 600 }}
+                            secondaryTypographyProps={{ fontSize: "0.75rem" }}
+                          />
+                        </ListItemButton>
+                      </ListItem>
+                    ))}
+                  </List>
+                </Popover>
               </Box>
             </Box>
 
@@ -217,22 +304,27 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               </Badge>
               <Box sx={{ width: 1, height: 24, backgroundColor: "divider", mx: 0.5 }} />
               <ThemeToggle />
+              <IconButton color={showChat ? "primary" : "default"} onClick={() => setShowChat(!showChat)} sx={{ border: "1px solid", borderColor: "divider", borderRadius: "4px", p: 0.5 }}>
+                <ChatIcon sx={{ fontSize: 20 }} />
+              </IconButton>
             </Box>
           </Toolbar>
         </AppBar>
 
-        {/* Content Canvas */}
-        <Box
-          sx={{
-            flex: 1,
-            overflow: "auto",
-            backgroundColor: isLight ? "#fbfcfd" : "background.default",
-            position: "relative",
-          }}
-        >
-          <Box sx={{ p: 3, maxWidth: 1400, mx: "auto" }}>
-            {children}
+        <Box sx={{ flex: 1, display: "flex", overflow: "hidden" }}>
+          <Box
+            sx={{
+              flex: 1,
+              overflow: "auto",
+              backgroundColor: isLight ? "#fbfcfd" : "background.default",
+              position: "relative",
+            }}
+          >
+            <Box sx={{ p: 3, maxWidth: 1400, mx: "auto" }}>
+              {children}
+            </Box>
           </Box>
+          {showChat && <AIChatSidebar onClose={() => setShowChat(false)} />}
         </Box>
 
         {/* Thin Status Footer */}

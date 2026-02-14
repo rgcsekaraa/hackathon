@@ -143,6 +143,9 @@ async def websocket_session(
                         "operations": [{"op": "add", "component": _model_to_dict(t)} for t in tasks],
                     }))
 
+                elif msg_type == "ping":
+                    await websocket.send_text(json.dumps({"type": "pong", "timestamp": str(datetime.now(timezone.utc))}))
+
     except WebSocketDisconnect:
         active_connections[user_id].remove(websocket)
         if not active_connections[user_id]:

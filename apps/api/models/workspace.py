@@ -23,8 +23,11 @@ class WorkspaceComponent(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
+    project_id: Mapped[str | None] = mapped_column(String, ForeignKey("projects.id"), nullable=True)
+
     # Relations
     user: Mapped["User"] = relationship(back_populates="tasks")
+    project: Mapped["Project"] = relationship(back_populates="components")
 
     def __repr__(self) -> str:
         return f"WorkspaceComponent(id={self.id!r}, title={self.title!r})"

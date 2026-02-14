@@ -10,8 +10,14 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from core.config import settings
-from routers import health, session, auth, oauth
+from routers import health, session, auth, oauth, search
 from db.init_db import init_db
+
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+
+limiter = Limiter(key_func=get_remote_address)
 
 
 @asynccontextmanager
@@ -30,6 +36,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 # Allow frontend origins in development and production
 app.add_middleware(
     CORSMiddleware,
@@ -43,3 +52,4 @@ app.include_router(health.router, tags=["health"])
 app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(oauth.router, prefix="/auth", tags=["oauth"])
 app.include_router(session.router, tags=["session"])
+app.include_router(search.router, tags=["search"])
