@@ -46,7 +46,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } else {
       // Fetch user profile if not provided (typical for OAuth callback)
       try {
-        const res = await fetch("http://localhost:8001/auth/me", {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+        const res = await fetch(`${apiUrl}/auth/me`, {
           headers: { Authorization: `Bearer ${newToken}` },
         });
         if (res.ok) {
