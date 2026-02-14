@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "sophiie-space",
-    "slug": "sophiie-space",
+    "name": "Sophiie Orbit",
+    "slug": "Sophiie Orbit",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -17,8 +17,8 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.sophiiespace.app",
       "infoPlist": {
-        "NSSpeechRecognitionUsageDescription": "sophiie-space uses speech recognition to convert your voice into workspace tasks.",
-        "NSMicrophoneUsageDescription": "sophiie-space uses the microphone for voice input."
+        "NSSpeechRecognitionUsageDescription": "Sophiie Orbit uses speech recognition to convert your voice into workspace tasks.",
+        "NSMicrophoneUsageDescription": "Sophiie Orbit uses the microphone for voice input."
       }
     },
     "android": {

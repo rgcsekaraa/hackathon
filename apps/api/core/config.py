@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     """Central configuration for the API."""
 
     # Server
-    app_name: str = "sophiie-space"
+    app_name: str = "Sophiie Orbit"
     debug: bool = False
 
     # CORS -- comma-separated origins

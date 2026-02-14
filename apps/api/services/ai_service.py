@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 # The system prompt constraining LLM output to our intent schema
-SYSTEM_PROMPT = """You are an AI assistant for a trades business workspace app called Spatial Voice.
+SYSTEM_PROMPT = """You are an AI assistant for a trades business workspace app called Sophiie Orbit.
 Your job is to convert natural language into structured workspace operations.
 
 You MUST respond with valid JSON only. No markdown, no explanation, no extra text.

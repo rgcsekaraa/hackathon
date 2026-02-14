@@ -1,5 +1,5 @@
 """
-Spatial Voice API -- FastAPI backend for realtime workspace orchestration.
+Sophiie Orbit API -- FastAPI backend for realtime workspace orchestration.
 
 Handles WebSocket sessions, AI intent parsing, and workspace state management.
 Designed for low-latency streaming with OpenRouter LLM integration.
@@ -30,7 +30,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="sophiie-space",
+    title="Sophiie Orbit",
     description="Realtime workspace orchestration for voice, text, and touch input",
     version="0.1.0",
     lifespan=lifespan,
