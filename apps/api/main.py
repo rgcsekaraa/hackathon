@@ -10,13 +10,15 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from core.config import settings
-from routers import health, session
+from routers import health, session, auth
+from db.init_db import init_db
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup and shutdown logic for the application."""
-    # Future: initialize Redis connection pool, warm up caches
+    # Initialize database tables
+    await init_db()
     yield
     # Future: close Redis connection pool
 
@@ -38,4 +40,5 @@ app.add_middleware(
 )
 
 app.include_router(health.router, tags=["health"])
+app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(session.router, tags=["session"])

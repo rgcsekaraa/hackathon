@@ -30,6 +30,14 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379"
     redis_enabled: bool = False
 
+    # Database
+    database_url: str = "sqlite+aiosqlite:///./spatial_voice.db"
+
+    # Security
+    secret_key: str = "supersecret_change_me_in_prod"
+    algorithm: str = "HS256"
+    access_token_expire_minutes: int = 60 * 24 * 7  # 7 days for dev convenience
+
     model_config = {
         "env_file": ".env",
         "env_file_encoding": "utf-8",
