@@ -25,7 +25,7 @@ export function TopBar() {
           </View>
           <View>
             <Text style={[typography.h3, { color: colors.text, fontWeight: "800", letterSpacing: -0.5 }]}>
-              Spatial
+              sophiie
             </Text>
             <View style={styles.statusRow}>
               <StatusIndicator status={serverStatus} />

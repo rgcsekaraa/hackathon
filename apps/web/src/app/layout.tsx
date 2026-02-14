@@ -6,14 +6,14 @@ import { AuthProvider } from "@/context/AuthContext";
 import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
 
 export const metadata: Metadata = {
-  title: "Spatial Voice | Realtime AI Workspace",
+  title: "sophiie-space | Realtime AI Workspace",
   description:
     "Voice, text, and touch create and reshape a visual plan in real time. Built for trades professionals who need to plan jobs while moving.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Spatial Voice",
+    title: "sophiie-space",
   },
 };
 

@@ -24,7 +24,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Spatial Voice API",
+    title="sophiie-space",
     description="Realtime workspace orchestration for voice, text, and touch input",
     version="0.1.0",
     lifespan=lifespan,
