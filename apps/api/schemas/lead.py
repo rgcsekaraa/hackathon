@@ -53,6 +53,7 @@ class TradieProfileCreate(BaseModel):
     base_address: str = ""
     service_radius_km: float = 30.0
     travel_rate_per_km: float = 1.50
+    timezone: str = "Australia/Brisbane"  # IANA timezone
     working_hours: dict[str, list[str]] = Field(default_factory=dict)
 
 
@@ -68,6 +69,7 @@ class TradieProfileResponse(BaseModel):
     base_address: str
     service_radius_km: float
     travel_rate_per_km: float
+    timezone: str
     working_hours: dict[str, list[str]]
     is_active: bool
     created_at: datetime
@@ -207,7 +209,9 @@ class ScheduleSlot(BaseModel):
     date: str  # YYYY-MM-DD
     time_slot: str  # e.g. "08:00-10:00"
     available: bool = True
+    timezone: str = "Australia/Brisbane"  # IANA timezone
 
 
 class ScheduleResponse(BaseModel):
     slots: list[ScheduleSlot] = Field(default_factory=list)
+    timezone: str = "Australia/Brisbane"  # Tradie's timezone

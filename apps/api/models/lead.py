@@ -63,6 +63,10 @@ class TradieProfile(Base):
     service_radius_km: Mapped[float] = mapped_column(Float, default=30.0)
     travel_rate_per_km: Mapped[float] = mapped_column(Float, default=1.50)
 
+    # Timezone (IANA format, e.g. 'Australia/Brisbane')
+    # Used for timezone-aware scheduling — ensures slots are in the tradie's local time
+    timezone: Mapped[str] = mapped_column(String, default="Australia/Brisbane")
+
     # Availability (JSON: {"mon": ["08:00-17:00"], "tue": [...], ...})
     working_hours: Mapped[dict] = mapped_column(JSON, default=dict)
 
