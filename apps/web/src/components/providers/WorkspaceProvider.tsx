@@ -121,6 +121,8 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     }
   }, [applyPatches]);
 
+  const connectRef = useRef<() => void>(() => {});
+
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN || !token) return;
 
@@ -139,9 +141,6 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
         const message = JSON.parse(event.data);
         handleServerMessage(message as Record<string, unknown>);
       } catch (err) {
-        // Log or handle the error, but setError is not defined here.
-        // For now, we'll just ignore malformed messages as before,
-        // but keep the 'err' variable for potential future use.
         console.error("Failed to parse WebSocket message:", err);
       }
     };
@@ -149,7 +148,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     ws.onclose = () => {
       setConnectionStatus("disconnected");
       // Auto-reconnect after 2 seconds
-      reconnectTimerRef.current = setTimeout(connect, 2000);
+      reconnectTimerRef.current = setTimeout(() => connectRef.current(), 2000);
     };
 
     ws.onerror = () => {
@@ -158,6 +157,10 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
 
     wsRef.current = ws;
   }, [token, handleServerMessage]);
+
+  useEffect(() => {
+    connectRef.current = connect;
+  }, [connect]);
 
   const sendUtterance = useCallback((text: string, source: "voice" | "text" | "chip") => {
     if (wsRef.current?.readyState !== WebSocket.OPEN) return;
@@ -187,9 +190,10 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   }, []);
 
   useEffect(() => {
-    connect();
+    const timer = setTimeout(() => connect(), 0);
 
     return () => {
+      clearTimeout(timer);
       if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
       wsRef.current?.close();
     };

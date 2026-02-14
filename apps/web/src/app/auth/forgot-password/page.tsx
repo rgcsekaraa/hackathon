@@ -72,7 +72,7 @@ export default function ForgotPasswordPage() {
           Reset Password
         </Typography>
         <Typography variant="body2" sx={{ mb: 3, color: "text.secondary" }}>
-          Enter your email address and we'll send you a link to reset your password.
+          Enter your email address and we&apos;ll send you a link to reset your password.
         </Typography>
 
         {message && (

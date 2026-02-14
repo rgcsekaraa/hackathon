@@ -66,45 +66,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [searching, setSearching] = useState(false);
   const [anchorEl, setAnchorEl] = useState<HTMLDivElement | null>(null);
 
-  const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
-  const [error, setError] = useState("");
-
-  // Placeholder for setLoading, email, password, login, router to make the provided handleSubmit syntactically valid.
-  // In a real scenario, these would be defined or imported from their respective contexts/hooks.
-  const [loading, setLoading] = useState(false);
-  const email = ""; // Placeholder
-  const password = ""; // Placeholder
-  const login = (token: string, user: any) => console.log("Login called", token, user); // Placeholder
-  const router = { push: (path: string) => console.log("Router push called", path) }; // Placeholder
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
-
-    try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-      const res = await fetch(`${apiUrl}/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.detail || "Login failed");
-      }
-
-      login(data.access_token, data.user);
-      router.push("/dashboard");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleSearch = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const q = e.target.value;
     setSearchQuery(q);
@@ -115,12 +76,13 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
     setSearching(true);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/search?q=${encodeURIComponent(q)}`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const res = await fetch(`${apiUrl}/search?q=${encodeURIComponent(q)}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
         const data = await res.json();
-        setSearchResults(data.results);
+        setSearchResults(data.results || []);
       }
     } finally {
       setSearching(false);

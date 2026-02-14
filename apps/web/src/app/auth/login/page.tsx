@@ -42,8 +42,8 @@ export default function LoginPage() {
 
       login(data.access_token, data.user);
       router.push("/dashboard");
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Login failed");
     } finally {
       setLoading(false);
     }
