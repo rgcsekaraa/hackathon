@@ -8,26 +8,29 @@ import { createTheme, type ThemeOptions } from "@mui/material/styles";
  */
 const M3_TOKENS = {
   borderRadius: {
-    xs: 4,
-    s: 8,
-    m: 12, // Standard M3 Card/Component radius
-    l: 16,
-    xl: 28, // Extra rounded for FABs/Pills
+    xs: 6,
+    s: 10,
+    m: 16, // Smoother M3 Card radius
+    l: 24,
+    xl: 32, // Pill shapes
   },
 };
 
 const sharedOptions: ThemeOptions = {
   typography: {
     fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-    h1: { fontWeight: 700, letterSpacing: "-0.04em", fontSize: "2.5rem" },
-    h2: { fontWeight: 700, letterSpacing: "-0.03em", fontSize: "2rem" },
-    h3: { fontWeight: 600, letterSpacing: "-0.02em", fontSize: "1.5rem" },
-    h4: { fontWeight: 600, letterSpacing: "-0.01em" },
-    subtitle1: { fontWeight: 500, letterSpacing: "0.01em", fontSize: "0.875rem" },
-    body1: { fontSize: "0.875rem", lineHeight: 1.5, letterSpacing: "0.01em" },
-    body2: { fontSize: "0.8125rem", lineHeight: 1.5, letterSpacing: "0.01em" },
-    button: { fontWeight: 600, textTransform: "none", fontSize: "0.875rem", letterSpacing: "0.02em" },
-    caption: { fontSize: "0.75rem", fontWeight: 500, letterSpacing: "0.04em" },
+    h1: { fontWeight: 800, letterSpacing: "-0.04em", fontSize: "2.75rem" },
+    h2: { fontWeight: 800, letterSpacing: "-0.03em", fontSize: "2.25rem" },
+    h3: { fontWeight: 700, letterSpacing: "-0.02em", fontSize: "1.75rem" },
+    h4: { fontWeight: 700, letterSpacing: "-0.02em", fontSize: "1.5rem" },
+    h5: { fontWeight: 700, letterSpacing: "-0.02em", fontSize: "1.25rem" },
+    h6: { fontWeight: 700, letterSpacing: "-0.01em", fontSize: "1.1rem" },
+    subtitle1: { fontWeight: 600, letterSpacing: "0.01em", fontSize: "0.95rem" },
+    subtitle2: { fontWeight: 600, letterSpacing: "0.01em", fontSize: "0.875rem" },
+    body1: { fontSize: "1rem", lineHeight: 1.6, letterSpacing: "0.01em" },
+    body2: { fontSize: "0.875rem", lineHeight: 1.6, letterSpacing: "0.01em" },
+    button: { fontWeight: 700, textTransform: "none", fontSize: "0.875rem", letterSpacing: "0.03em" },
+    caption: { fontSize: "0.75rem", fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase" },
   },
   shape: {
     borderRadius: M3_TOKENS.borderRadius.m,
@@ -39,6 +42,7 @@ const sharedOptions: ThemeOptions = {
           WebkitFontSmoothing: "antialiased",
           MozOsxFontSmoothing: "grayscale",
           textRendering: "optimizeLegibility",
+          backgroundColor: "#020617",
         },
       },
     },
@@ -163,30 +167,30 @@ export const darkTheme = createTheme({
   palette: {
     mode: "dark",
     primary: {
-      main: "#3b82f6",
-      light: "#60a5fa",
-      dark: "#2563eb",
+      main: "#6366f1", // Indigo
+      light: "#818cf8",
+      dark: "#4f46e5",
       contrastText: "#ffffff",
     },
     secondary: {
-      main: "#94a3b8",
-      light: "#cbd5e1",
-      dark: "#64748b",
+      main: "#fbbf24", // Amber/Gold accents for premium feel
+      light: "#fcd34d",
+      dark: "#d97706",
     },
     background: {
-      default: "#020617",
+      default: "#020617", // Deep Navy/Slate
       paper: "#0f172a",
     },
     surfaceVariant: {
       main: "#1e293b",
-      contrastText: "#94a3b8",
+      contrastText: "#cbd5e1",
     },
     text: {
       primary: "#f8fafc",
       secondary: "#94a3b8",
-      disabled: "#64748b",
+      disabled: "#475569",
     },
-    divider: "rgba(255, 255, 255, 0.08)",
+    divider: "rgba(255, 255, 255, 0.06)",
   },
 });
 

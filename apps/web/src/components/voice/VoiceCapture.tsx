@@ -57,73 +57,149 @@ export function VoiceCapture() {
   }
 
   return (
-    <Box sx={{ 
-      display: "flex", 
-      flexDirection: "column", 
-      alignItems: "center", 
-      gap: 3, 
-      width: "100%",
-      py: 2
-    }}>
-      {/* Massive Hero Mic Button */}
-      <IconButton
-        onClick={handleMicToggle}
-        sx={{
-          width: 96, // Massive button
-          height: 96,
-          borderRadius: "28px", // M3 Extra Large button
-          backgroundColor: isListening ? "error.main" : "primary.main",
-          color: "white",
-          boxShadow: isListening 
-            ? `0 0 30px ${alpha(theme.palette.error.main, 0.6)}` 
-            : `0 8px 16px ${alpha(theme.palette.primary.main, 0.3)}`,
-          transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-          flexShrink: 0,
-          "& .MuiSvgIcon-root": { fontSize: 44 }, // Huge icon
-          "&:hover": {
-            transform: "scale(1.05)",
-            backgroundColor: isListening ? "error.dark" : "primary.dark",
-          },
-          "&:active": {
-            transform: "scale(0.95)",
-          },
-          ...(isListening && {
-            animation: "micPulse 1.5s infinite ease-in-out",
-            "@keyframes micPulse": {
-              "0%": { transform: "scale(1)", boxShadow: `0 0 0 0 ${alpha(theme.palette.error.main, 0.7)}` },
-              "70%": { transform: "scale(1.1)", boxShadow: `0 0 0 20px ${alpha(theme.palette.error.main, 0)}` },
-              "100%": { transform: "scale(1)", boxShadow: `0 0 0 0 ${alpha(theme.palette.error.main, 0)}` },
+    <Box sx={{ width: "100%", textAlign: "center", py: 2 }}>
+      {/* Immersive HUD Overlay during listening */}
+      {isListening && (
+        <Box
+          sx={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 2000,
+            backgroundColor: alpha(theme.palette.background.default, 0.9),
+            backdropFilter: "blur(20px)",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            animation: "fadeIn 0.3s ease-out",
+            "@keyframes fadeIn": {
+              from: { opacity: 0 },
+              to: { opacity: 1 },
             },
-          }),
-        }}
-      >
-        {isListening ? <MicOffIcon /> : <MicIcon />}
-      </IconButton>
-
-      {/* Live transcript - Highly legible */}
-      <Box sx={{ minHeight: 48, textAlign: 'center', width: '100%', px: 2 }}>
-        {interimText && (
-          <Typography
-            variant="h6"
+          }}
+        >
+          {/* Central Orbit Pulse */}
+          <Box
             sx={{
-              color: "text.primary",
-              fontWeight: 700,
-              fontStyle: "italic",
-              lineHeight: 1.2,
+              position: "relative",
+              width: 240,
+              height: 240,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
             }}
           >
-            &quot;{interimText}&quot;
-          </Typography>
-        )}
-        {isListening && !interimText && (
+            {[1, 2, 3].map((i) => (
+              <Box
+                key={i}
+                sx={{
+                  position: "absolute",
+                  width: "100%",
+                  height: "100%",
+                  borderRadius: "50%",
+                  border: `2px solid ${alpha(theme.palette.primary.main, 0.4 - i * 0.1)}`,
+                  animation: `orbitPulse 2s infinite ease-out ${i * 0.5}s`,
+                  "@keyframes orbitPulse": {
+                    "0%": { transform: "scale(0.8)", opacity: 1 },
+                    "100%": { transform: "scale(1.4)", opacity: 0 },
+                  },
+                }}
+              />
+            ))}
+            <IconButton
+              onClick={handleMicToggle}
+              sx={{
+                width: 120,
+                height: 120,
+                borderRadius: "50%",
+                backgroundColor: "primary.main",
+                color: "white",
+                boxShadow: `0 0 50px ${alpha(theme.palette.primary.main, 0.6)}`,
+                "& .MuiSvgIcon-root": { fontSize: 48 },
+              }}
+            >
+              <MicOffIcon />
+            </IconButton>
+          </Box>
+
+          <Box sx={{ mt: 8, px: 4, width: "100%", maxWidth: 600 }}>
+            <Typography
+              variant="h4"
+              sx={{
+                color: "text.primary",
+                fontWeight: 800,
+                mb: 2,
+                opacity: interimText ? 1 : 0.6,
+                letterSpacing: "-0.02em",
+              }}
+            >
+              {interimText || "I'm Listening..."}
+            </Typography>
+            <Typography
+              variant="subtitle1"
+              sx={{ color: "primary.main", fontWeight: 700, letterSpacing: "0.1em" }}
+            >
+              SOPHIIE ORBIT
+            </Typography>
+          </Box>
+
           <Typography
-            variant="h6"
-            sx={{ color: "error.main", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.1em" }}
+            variant="caption"
+            sx={{
+              position: "absolute",
+              bottom: 48,
+              color: "text.disabled",
+              fontWeight: 700,
+            }}
           >
-            LISTENING...
+            TAP TO CONFIRM
           </Typography>
-        )}
-      </Box>
+        </Box>
+      )}
+
+      {/* Main Action Hub Trigger (when not listening) */}
+      {!isListening && (
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 2,
+          }}
+        >
+          <IconButton
+            onClick={handleMicToggle}
+            sx={{
+              width: 80,
+              height: 80,
+              borderRadius: "24px",
+              backgroundColor: alpha(theme.palette.primary.main, 0.1),
+              color: "primary.main",
+              border: "1px solid",
+              borderColor: alpha(theme.palette.primary.main, 0.2),
+              transition: "all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
+              "& .MuiSvgIcon-root": { fontSize: 32 },
+              "&:hover": {
+                transform: "translateY(-4px)",
+                backgroundColor: alpha(theme.palette.primary.main, 0.15),
+                borderColor: "primary.main",
+                boxShadow: `0 8px 20px ${alpha(theme.palette.primary.main, 0.2)}`,
+              },
+            }}
+          >
+            <MicIcon />
+          </IconButton>
+          <Typography
+            variant="caption"
+            sx={{ color: "text.secondary", fontWeight: 800, letterSpacing: "0.05em" }}
+          >
+            START COMMAND
+          </Typography>
+        </Box>
+      )}
     </Box>
   );
 }

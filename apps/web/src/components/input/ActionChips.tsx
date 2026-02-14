@@ -32,38 +32,39 @@ export function ActionChips() {
   const theme = useTheme();
 
   return (
-    <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap", mb: 1 }}>
+    <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mb: 2 }}>
       {CHIPS.map((chip) => (
         <Chip
           key={chip.label}
-          label={chip.label.toUpperCase()} // Bold uppercase
+          label={chip.label}
           icon={chip.icon}
-          size="medium" // Increased size
           onClick={() => sendUtterance(chip.command, "chip")}
           sx={{
             cursor: "pointer",
-            height: 44, // Minimum mobile tap height
+            height: 40,
             borderRadius: "12px",
-            fontSize: "0.85rem",
-            fontWeight: 800, // Extra bold
-            backgroundColor: theme.palette.mode === 'dark' ? alpha(theme.palette.primary.main, 0.15) : alpha(theme.palette.primary.main, 0.05),
-            border: "2px solid", // Bolder border
-            borderColor: alpha(theme.palette.primary.main, 0.2),
+            fontSize: "0.8rem",
+            fontWeight: 700,
+            backgroundColor: alpha(theme.palette.surfaceVariant.main, 0.4),
+            border: "1px solid",
+            borderColor: "divider",
             color: "text.primary",
-            px: 1,
-            transition: "all 0.1s ease-in-out",
+            px: 0.5,
+            transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
             "& .MuiChip-icon": { 
               color: "primary.main",
-              fontSize: 20, // Larger icons
+              fontSize: 18,
             },
-            "&:hover, &:active": {
-              backgroundColor: "primary.main",
+            "&:hover": {
+              backgroundColor: alpha(theme.palette.primary.main, 0.1),
               borderColor: "primary.main",
-              color: "white",
-              "& .MuiChip-icon": { color: "white" },
+              boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.2)}`,
+            },
+            "&:active": {
+              transform: "scale(0.95)",
             },
             "& .MuiChip-label": {
-              px: 1.5,
+              px: 1,
             }
           }}
         />

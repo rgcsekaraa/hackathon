@@ -8,7 +8,6 @@ import Box from "@mui/material/Box";
 import IconButton from "@mui/material/IconButton";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import ScheduleIcon from "@mui/icons-material/Schedule";
 import { alpha, useTheme } from "@mui/material/styles";
 
@@ -49,119 +48,129 @@ export function TaskCard({
   id,
   title,
   description,
-  priority,
+  completed,
+  priority = "normal",
   date,
   timeSlot,
-  completed,
   onToggleComplete,
   onDelete,
 }: TaskCardProps) {
   const theme = useTheme();
-  const priorityCfg = PRIORITY_CONFIG[priority];
-  const isLight = theme.palette.mode === "light";
+
+  const priorityCfg = PRIORITY_CONFIG[priority as keyof typeof PRIORITY_CONFIG] || PRIORITY_CONFIG.normal;
 
   return (
     <Card
-      id={id}
-      variant="outlined"
       sx={{
-        p: 0,
-        mb: 2, // More space between cards
-        transition: "all 0.2s ease-in-out",
-        opacity: completed ? 0.7 : 1,
-        borderRadius: "20px", // More rounded rugged look
-        border: "2px solid",
-        borderColor: completed ? "divider" : alpha(priorityCfg.color, 0.3),
-        boxShadow: completed ? "none" : `0 4px 12px ${alpha(priorityCfg.color, 0.1)}`,
-        "&:hover": {
-          borderColor: priorityCfg.color,
-          backgroundColor: alpha(priorityCfg.color, 0.02),
-        },
+        mb: 2,
+        position: "relative",
+        overflow: "visible",
+        backgroundColor: "background.paper",
+        borderRadius: "16px",
+        transition: "all 0.2s ease",
+        border: "1px solid",
+        borderColor: "divider",
+        "&:active": { transform: "scale(0.98)" },
       }}
     >
+      {/* Priority Accent Strip */}
+      <Box
+        sx={{
+          position: "absolute",
+          left: -1,
+          top: 12,
+          bottom: 12,
+          width: 4,
+          borderRadius: "0 4px 4px 0",
+          backgroundColor: priorityCfg.color,
+          boxShadow: `2px 0 8px ${alpha(priorityCfg.color, 0.4)}`,
+        }}
+      />
+
       <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
-        <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2 }}>
-          {/* Larger Checkbox area */}
+        <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1.5 }}>
           <IconButton 
             onClick={() => onToggleComplete?.(id)}
             sx={{ 
-              mt: -0.5,
-              p: 1.5,
-              color: completed ? "success.main" : "text.secondary",
-              "& .MuiSvgIcon-root": { fontSize: 32 } // Big checkboxes
+              mt: -0.25,
+              p: 0.5,
+              color: completed ? "success.main" : "text.disabled",
+              transition: "all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
+              "& .MuiSvgIcon-root": { fontSize: 24 }
             }}
           >
+            {completed ? <CheckCircleIcon /> : <CheckCircleOutlineIcon />}
           </IconButton>
+
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 1, mb: 1 }}>
+            <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 1, mb: 0.5 }}>
               <Typography
-                variant="h6"
+                variant="subtitle1"
                 sx={{
-                  fontWeight: 800, // Extra bold
-                  fontSize: "1.1rem",
+                  fontWeight: 700,
                   color: "text.primary",
                   textDecoration: completed ? "line-through" : "none",
-                  flexGrow: 1,
+                  opacity: completed ? 0.6 : 1,
+                  lineHeight: 1.2,
                 }}
               >
                 {title}
               </Typography>
-              
-              <Chip
-                label={timeSlot ? (TIME_SLOT_LABELS[timeSlot] || timeSlot) : "ALL DAY"}
-                variant="filled"
-                sx={{ 
-                  height: 28, 
-                  fontSize: "0.75rem", 
-                  fontWeight: 900, 
-                  bgcolor: "text.primary",
-                  color: "background.paper",
-                  borderRadius: "8px"
-                }}
-              />
-            </Box>
-
-            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 1.5 }}>
-              {priority !== "normal" && (
-                <Chip 
-                  label={priorityCfg.label.toUpperCase()} 
-                  sx={{ 
-                    height: 24, 
-                    fontSize: "0.7rem", 
-                    fontWeight: 900, 
-                    bgcolor: priorityCfg.color, 
-                    color: "white",
-                    borderRadius: "6px",
-                    px: 0.5
+              {timeSlot && (
+                <Chip
+                  label={TIME_SLOT_LABELS[timeSlot] || timeSlot}
+                  size="small"
+                  sx={{
+                    height: 18,
+                    fontSize: "0.65rem",
+                    fontWeight: 700,
+                    backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                    color: "primary.main",
+                    borderRadius: "4px"
                   }}
                 />
-              )}
-              {date && (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                  <ScheduleIcon sx={{ fontSize: 14, color: 'text.disabled' }} />
-                  <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 700, fontSize: "0.8rem" }}>
-                    {date}
-                  </Typography>
-                </Box>
               )}
             </Box>
 
             <Typography
-              variant="body1"
+              variant="body2"
               sx={{
                 color: "text.secondary",
-                fontSize: "0.95rem", // Larger text
-                fontWeight: 500,
+                fontSize: "0.85rem",
                 lineHeight: 1.4,
+                mb: 1,
                 display: "-webkit-box",
-                WebkitLineClamp: 3,
+                WebkitLineClamp: 2,
                 WebkitBoxOrient: "vertical",
                 overflow: "hidden",
-                opacity: 0.9,
+                opacity: completed ? 0.5 : 0.8,
               }}
             >
               {description}
             </Typography>
+
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+              {date && (
+                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, color: "text.disabled" }}>
+                  <ScheduleIcon sx={{ fontSize: 12 }} />
+                  <Typography variant="caption" sx={{ fontSize: "0.65rem", fontWeight: 600 }}>
+                    {date}
+                  </Typography>
+                </Box>
+              )}
+              <Box sx={{ flex: 1 }} />
+              <Typography 
+                variant="caption" 
+                sx={{ 
+                  color: priorityCfg.color, 
+                  fontWeight: 800, 
+                  fontSize: "0.6rem",
+                  letterSpacing: "0.05em"
+                }}
+              >
+                {priority.toUpperCase()}
+              </Typography>
+            </Box>
           </Box>
         </Box>
       </CardContent>
