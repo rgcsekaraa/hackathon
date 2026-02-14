@@ -13,7 +13,7 @@ This document provides step-by-step instructions to set up, run, and test Sophii
 
 Run all services (Web, API, Mobile) in parallel:
 ```bash
-npm run dev
+pnpm run dev
 ```
 This command uses Nx to launch:
 - **Web Dashboard**: `http://localhost:3000`
@@ -28,14 +28,14 @@ If you prefer running services in separate terminals or need to debug a specific
 ```bash
 npx nx serve web
 # or
-cd apps/web && npm run dev
+cd apps/web && pnpm run dev
 ```
 
 ### Backend (API)
 ```bash
 npx nx serve api
 # or
-cd apps/api && source .venv/bin/activate && uvicorn main:app --reload
+cd apps/api && uv run uvicorn main:app --reload
 ```
 
 ### Mobile (Expo)

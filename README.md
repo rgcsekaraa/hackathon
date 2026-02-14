@@ -60,12 +60,19 @@ Optimized for productivity, the dashboard provides a compact yet readable view o
 
 1.  **Install Dependencies**:
     ```bash
-    npm install
+    # Install tools (if needed)
+    npm install -g pnpm
+    pip install uv
+
+    # Install project dependencies
+    pnpm install
+    # API dependencies are handled via uv in the start script, or manually:
+    # cd apps/api && uv venv && uv pip install -r requirements.txt
     ```
 
 2.  **Start Everything (Web + API + Mobile)**:
     ```bash
-    npm run dev
+    pnpm run dev
     ```
     This launches:
     - **Web Dashboard**: [http://localhost:3000](http://localhost:3000)
@@ -74,7 +81,7 @@ Optimized for productivity, the dashboard provides a compact yet readable view o
 
 3.  **Build Everything**:
     ```bash
-    npm run build
+    pnpm run build
     ```
     This builds:
     - **Web**: Production build (`.next`)
