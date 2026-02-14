@@ -5,6 +5,8 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ThemeContext, type ThemeMode } from "../lib/theme";
 import { WorkspaceProvider } from "../lib/workspace-provider";
+import { VoiceProvider } from "../context/VoiceProvider";
+import { VoiceAssistant } from "../components/VoiceAssistant";
 import { NotificationSetup } from "../components/NotificationSetup";
 
 /**
@@ -25,17 +27,20 @@ export default function RootLayout() {
     <ThemeContext.Provider value={themeValue}>
       <SafeAreaProvider>
         <WorkspaceProvider>
-          <StatusBar style={mode === "dark" ? "light" : "dark"} />
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              contentStyle: {
-                backgroundColor: mode === "dark" ? "#020617" : "#f8fafc",
-              },
-              animation: "fade",
-            }}
-          />
-          <NotificationSetup />
+          <VoiceProvider>
+            <StatusBar style={mode === "dark" ? "light" : "dark"} />
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                contentStyle: {
+                  backgroundColor: mode === "dark" ? "#020617" : "#f8fafc",
+                },
+                animation: "fade",
+              }}
+            />
+            <NotificationSetup />
+            <VoiceAssistant />
+          </VoiceProvider>
         </WorkspaceProvider>
       </SafeAreaProvider>
     </ThemeContext.Provider>
