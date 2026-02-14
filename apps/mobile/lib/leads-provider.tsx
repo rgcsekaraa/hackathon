@@ -48,7 +48,7 @@ export interface Lead {
   updatedAt: string;
 }
 
-export interface TradieProfile {
+export interface UserProfile {
   businessName: string;
   baseAddress: string;
   calloutFee: number;
@@ -61,11 +61,11 @@ export interface TradieProfile {
 
 interface LeadsState {
   leads: Lead[];
-  profile: TradieProfile;
+  profile: UserProfile;
   stats: { pending: number; booked: number; revenue: number };
   connectionStatus: "connecting" | "connected" | "disconnected" | "error";
   decideLead: (leadId: string, decision: "approve" | "reject", edits?: Partial<Lead>) => void;
-  updateProfile: (updates: Partial<TradieProfile>) => void;
+  updateProfile: (updates: Partial<UserProfile>) => void;
   refreshLeads: () => void;
 }
 
@@ -182,7 +182,7 @@ const DEMO_LEADS: Lead[] = [
   },
 ];
 
-const DEFAULT_PROFILE: TradieProfile = {
+const DEFAULT_PROFILE: UserProfile = {
   businessName: "GC Plumbing Solutions",
   baseAddress: "Southport, QLD 4215",
   calloutFee: 80,
@@ -199,7 +199,7 @@ const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:8000";
 
 export function LeadsProvider({ children }: { children: ReactNode }) {
   const [leads, setLeads] = useState<Lead[]>(DEMO_LEADS);
-  const [profile, setProfile] = useState<TradieProfile>(DEFAULT_PROFILE);
+  const [profile, setProfile] = useState<UserProfile>(DEFAULT_PROFILE);
   const [connectionStatus, setConnectionStatus] = useState<
     "connecting" | "connected" | "disconnected" | "error"
   >("connected"); // Default connected for demo
@@ -244,7 +244,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
     []
   );
 
-  const updateProfile = useCallback((updates: Partial<TradieProfile>) => {
+  const updateProfile = useCallback((updates: Partial<UserProfile>) => {
     setProfile((prev) => ({ ...prev, ...updates }));
   }, []);
 

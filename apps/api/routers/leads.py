@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from db.session import get_db
 from core.deps import get_current_user
 from models.user import User
-from models.lead import LeadSession, TradieProfile, LeadStatus
+from models.lead import LeadSession, UserProfile, LeadStatus
 from schemas.lead import (
     LeadCreate, LeadResponse, LeadUpdate, TradieDecision,
     CustomerMessage, LeadPatch,
@@ -36,19 +36,19 @@ async def create_new_lead(
     user: User = Depends(get_current_user),
 ):
     """Create a new lead session (simulated inbound call)."""
-    # Find tradie profile -- for demo, use the current user's profile
+    # Find user profile -- for demo, use the current user's profile
     result = await db.execute(
-        select(TradieProfile).where(TradieProfile.user_id == user.id)
+        select(UserProfile).where(UserProfile.user_id == user.id)
     )
-    tradie = result.scalar_one_or_none()
+    profile = result.scalar_one_or_none()
 
-    if not tradie:
+    if not profile:
         raise HTTPException(
             status_code=400,
-            detail="You need to set up your tradie profile first.",
+            detail="You need to set up your profile first.",
         )
 
-    lead = await create_lead(db, tradie.id, data)
+    lead = await create_lead(db, profile.id, data)
 
     # Process the initial message through the pipeline
     patches = await process_customer_message(db, lead, data.job_description)
@@ -79,17 +79,17 @@ async def list_leads(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    """List all leads for the current tradie."""
+    """List all leads for the current user."""
     result = await db.execute(
-        select(TradieProfile).where(TradieProfile.user_id == user.id)
+        select(UserProfile).where(UserProfile.user_id == user.id)
     )
-    tradie = result.scalar_one_or_none()
-    if not tradie:
+    profile = result.scalar_one_or_none()
+    if not profile:
         return []
 
     result = await db.execute(
         select(LeadSession)
-        .where(LeadSession.tradie_id == tradie.id)
+        .where(LeadSession.user_profile_id == profile.id)
         .order_by(LeadSession.created_at.desc())
     )
     return result.scalars().all()
@@ -176,11 +176,11 @@ async def submit_tradie_decision(
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
 
-    # Verify tradie owns this lead
+    # Verify user owns this lead
     result = await db.execute(
-        select(TradieProfile).where(
-            TradieProfile.id == lead.tradie_id,
-            TradieProfile.user_id == user.id,
+        select(UserProfile).where(
+            UserProfile.id == lead.user_profile_id,
+            UserProfile.user_id == user.id,
         )
     )
     if not result.scalar_one_or_none():

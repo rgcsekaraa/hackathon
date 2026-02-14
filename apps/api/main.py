@@ -10,7 +10,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from core.config import settings
-from routers import health, session, auth, oauth, search, leads, tradie, voice, ws_leads
+from routers import health, session, auth, oauth, search, leads, profile, voice, ws_leads
 from db.init_db import init_db
 
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -54,6 +54,6 @@ app.include_router(oauth.router, prefix="/auth", tags=["oauth"])
 app.include_router(session.router, tags=["session"])
 app.include_router(search.router, tags=["search"])
 app.include_router(leads.router, prefix="/api", tags=["leads"])
-app.include_router(tradie.router, prefix="/api", tags=["tradie"])
+app.include_router(profile.router, prefix="/api", tags=["profile"])
 app.include_router(voice.router, prefix="/api", tags=["voice"])
 app.include_router(ws_leads.router, tags=["realtime"])

@@ -14,7 +14,7 @@ import logging
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, File, UploadFile, Form, Request, HTTPException, WebSocket
+from fastapi import APIRouter, File, UploadFile, Form, Request, HTTPException, WebSocket, Depends
 from fastapi.responses import Response
 from pydantic import BaseModel
 
@@ -24,6 +24,10 @@ from services.ai.langchain_agent import classify_lead, ClassifiedLead
 from services.realtime.connection_manager import lead_manager
 from services.tradie_context import load_tradie_context, get_tradie_context_for_ai
 from db.session import get_db_context
+from core.deps import get_current_user
+from models.user import User
+from services.voice.livekit_rooms import generate_participant_token
+from core.config import settings
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -474,6 +478,30 @@ async def text_to_speech(req: TTSRequest):
         media_type="audio/mpeg",
         headers={"Content-Disposition": "inline; filename=speech.mp3"},
     )
+
+
+@router.post("/voice/token")
+async def get_livekit_token(
+    user: User = Depends(get_current_user),
+):
+    """
+    Get a LiveKit token for the logged-in user to start a voice session.
+    Generates a unique room name for this session.
+    """
+    # Create a unique room name for this session
+    room_name = f"call-{user.id}-{int(datetime.now(timezone.utc).timestamp())}"
+    
+    # Generate token for the user
+    token = await generate_participant_token(room_name, f"user-{user.id}")
+    
+    if not token:
+        raise HTTPException(status_code=500, detail="Failed to generate LiveKit token")
+        
+    return {
+        "token": token,
+        "url": settings.livekit_url,
+        "room_name": room_name,
+    }
 
 
 @router.get("/voice/voices")

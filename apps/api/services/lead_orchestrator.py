@@ -21,7 +21,7 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models.lead import TradieProfile, LeadSession, QuoteLineItem, LeadStatus
+from models.lead import UserProfile, LeadSession, QuoteLineItem, LeadStatus
 from schemas.lead import (
     LeadCreate, LeadResponse, TradieDecision, TradieDecisionEnum,
     QuoteBreakdown, QuoteLineItemSchema, PhotoAnalysis,
@@ -143,13 +143,13 @@ def _fallback_classify(text: str) -> dict:
 
 async def create_lead(
     db: AsyncSession,
-    tradie_id: str,
+    user_profile_id: str,
     lead_data: LeadCreate,
 ) -> LeadSession:
     """Create a new lead session."""
     lead = LeadSession(
         id=str(uuid.uuid4()),
-        tradie_id=tradie_id,
+        user_profile_id=user_profile_id,
         status=LeadStatus.NEW.value,
         customer_name=lead_data.customer_name,
         customer_phone=lead_data.customer_phone,
@@ -237,18 +237,18 @@ async def process_customer_message(
     ))
     lead.status = LeadStatus.PRICING.value
 
-    # Get tradie profile for rates
+    # Get user profile for rates
     result = await db.execute(
-        select(TradieProfile).where(TradieProfile.id == lead.tradie_id)
+        select(UserProfile).where(UserProfile.id == lead.user_profile_id)
     )
-    tradie = result.scalar_one_or_none()
+    profile = result.scalar_one_or_none()
 
-    if not tradie:
-        logger.error("Tradie profile not found: %s", lead.tradie_id)
+    if not profile:
+        logger.error("User profile not found: %s", lead.user_profile_id)
         return patches
 
     # Parallel integration calls
-    distance_task = calculate_distance(tradie.base_address, lead.customer_address)
+    distance_task = calculate_distance(profile.base_address, lead.customer_address)
 
     # If we have a photo analysis, use it for parts lookup
     parts_price = 0.0
@@ -293,14 +293,14 @@ async def process_customer_message(
     estimated_hours = estimate_labour_hours(lead.job_type)
 
     quote = calculate_quote(
-        callout_fee=tradie.base_callout_fee,
-        hourly_rate=tradie.hourly_rate,
-        min_labour_hours=tradie.min_labour_hours,
+        callout_fee=profile.base_callout_fee,
+        hourly_rate=profile.hourly_rate,
+        min_labour_hours=profile.min_labour_hours,
         estimated_hours=estimated_hours,
         parts_cost=parts_price,
-        markup_pct=tradie.markup_pct,
+        markup_pct=profile.markup_pct,
         distance_km=distance_result.distance_km,
-        travel_rate_per_km=tradie.travel_rate_per_km,
+        travel_rate_per_km=profile.travel_rate_per_km,
     )
 
     # Save quote to lead
