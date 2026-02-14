@@ -29,7 +29,9 @@ interface WorkspaceState {
   connectionStatus: ConnectionStatus;
   serverStatus: ServerStatus;
   sendUtterance: (text: string, source: "voice" | "text" | "chip") => void;
+  sendAction: (action: string, componentId: string, payload?: Record<string, unknown>) => void;
   requestSync: () => void;
+  registerPushToken: (token: string) => void;
 }
 
 const WorkspaceContext = createContext<WorkspaceState | null>(null);
@@ -52,8 +54,8 @@ const SESSION_ID = "default";
 
 /**
  * WebSocket-based workspace state provider for the mobile app.
- * Mirrors the web WorkspaceProvider, managing connection lifecycle
- * and applying patch operations from the server.
+ * Manages connection lifecycle, applies server patches, handles
+ * direct actions, and registers push notification tokens.
  */
 export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   const [components, setComponents] = useState<WorkspaceComponent[]>([]);
@@ -149,9 +151,27 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     }));
   }, []);
 
+  const sendAction = useCallback((action: string, componentId: string, payload?: Record<string, unknown>) => {
+    if (wsRef.current?.readyState !== WebSocket.OPEN) return;
+    wsRef.current.send(JSON.stringify({
+      type: "action",
+      action,
+      componentId,
+      payload,
+    }));
+  }, []);
+
   const requestSync = useCallback(() => {
     if (wsRef.current?.readyState !== WebSocket.OPEN) return;
     wsRef.current.send(JSON.stringify({ type: "sync_request" }));
+  }, []);
+
+  const registerPushToken = useCallback((token: string) => {
+    if (wsRef.current?.readyState !== WebSocket.OPEN) return;
+    wsRef.current.send(JSON.stringify({
+      type: "register_push_token",
+      token,
+    }));
   }, []);
 
   useEffect(() => {
@@ -164,7 +184,15 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
 
   return (
     <WorkspaceContext.Provider
-      value={{ components, connectionStatus, serverStatus, sendUtterance, requestSync }}
+      value={{
+        components,
+        connectionStatus,
+        serverStatus,
+        sendUtterance,
+        sendAction,
+        requestSync,
+        registerPushToken,
+      }}
     >
       {children}
     </WorkspaceContext.Provider>

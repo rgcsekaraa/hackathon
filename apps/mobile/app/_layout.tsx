@@ -5,10 +5,12 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ThemeContext, type ThemeMode } from "../lib/theme";
 import { WorkspaceProvider } from "../lib/workspace-provider";
+import { NotificationSetup } from "../components/NotificationSetup";
 
 /**
  * Root layout wraps the app in theme context, workspace provider,
- * and safe area handling. Dark mode by default.
+ * safe area handling, and push notification registration.
+ * Dark mode by default.
  */
 export default function RootLayout() {
   const [mode, setMode] = useState<ThemeMode>("dark");
@@ -33,6 +35,7 @@ export default function RootLayout() {
               animation: "fade",
             }}
           />
+          <NotificationSetup />
         </WorkspaceProvider>
       </SafeAreaProvider>
     </ThemeContext.Provider>

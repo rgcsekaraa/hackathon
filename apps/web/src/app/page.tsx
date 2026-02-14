@@ -17,29 +17,20 @@ import { ActionChips } from "@/components/input/ActionChips";
  * Inner content of the mobile page that consumes workspace context.
  */
 function MobileWorkspace() {
-  const { components, serverStatus, sendUtterance } = useWorkspace();
+  const { components, serverStatus, sendAction } = useWorkspace();
 
   const handleToggleComplete = useCallback(
     (id: string) => {
-      const comp = components.find((c) => c.id === id);
-      if (comp) {
-        sendUtterance(
-          comp.completed ? `Mark ${comp.title} as not done` : `Mark ${comp.title} as done`,
-          "chip"
-        );
-      }
+      sendAction("toggle_complete", id);
     },
-    [components, sendUtterance]
+    [sendAction]
   );
 
   const handleDelete = useCallback(
     (id: string) => {
-      const comp = components.find((c) => c.id === id);
-      if (comp) {
-        sendUtterance(`Delete ${comp.title}`, "chip");
-      }
+      sendAction("delete", id);
     },
-    [components, sendUtterance]
+    [sendAction]
   );
 
   return (

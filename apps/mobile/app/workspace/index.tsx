@@ -25,29 +25,20 @@ export default function WorkspaceScreen() {
   const insets = useSafeAreaInsets();
   const colors = useColors();
   const { mode } = useThemeMode();
-  const { components, serverStatus, sendUtterance } = useWorkspace();
+  const { components, serverStatus, sendAction } = useWorkspace();
 
   const handleToggleComplete = useCallback(
     (id: string) => {
-      const comp = components.find((c) => c.id === id);
-      if (comp) {
-        sendUtterance(
-          comp.completed ? `Mark ${comp.title} as not done` : `Mark ${comp.title} as done`,
-          "chip"
-        );
-      }
+      sendAction("toggle_complete", id);
     },
-    [components, sendUtterance]
+    [sendAction]
   );
 
   const handleDelete = useCallback(
     (id: string) => {
-      const comp = components.find((c) => c.id === id);
-      if (comp) {
-        sendUtterance(`Delete ${comp.title}`, "chip");
-      }
+      sendAction("delete", id);
     },
-    [components, sendUtterance]
+    [sendAction]
   );
 
   const renderItem = useCallback(

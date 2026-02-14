@@ -15,6 +15,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from services.ai_service import process_utterance
 from services.workspace_service import apply_intents_to_workspace
+from services.notifications import register_token, send_push
 
 logger = logging.getLogger(__name__)
 
@@ -123,10 +124,60 @@ async def websocket_session(websocket: WebSocket, session_id: str):
                     "message": "Workspace updated",
                 })
 
+                # Push notification to other devices
+                if operations:
+                    titles = [op.get("component", {}).get("title", "") for op in operations if op.get("op") == "add"]
+                    if titles:
+                        await send_push(
+                            session_id,
+                            title="Spatial Voice",
+                            body=f"New task: {titles[0]}" if len(titles) == 1 else f"{len(titles)} new tasks added",
+                            data={"type": "workspace_update"},
+                        )
+
             elif msg_type == "action":
                 # Direct user actions bypass AI -- apply immediately
-                # This will be expanded in Phase 7
-                pass
+                action = message.get("action", "")
+                component_id = message.get("componentId", "")
+                payload = message.get("payload", {})
+                workspace = get_or_create_workspace(session_id)
+                components = workspace.get("components", {})
+
+                if action == "toggle_complete" and component_id in components:
+                    comp = components[component_id]
+                    new_completed = not comp.get("completed", False)
+                    comp["completed"] = new_completed
+                    comp["updatedAt"] = datetime.now(timezone.utc).isoformat()
+                    await broadcast_to_session(session_id, {
+                        "type": "patch",
+                        "operations": [{"op": "update", "componentId": component_id, "changes": {"completed": new_completed}}],
+                    })
+
+                elif action == "delete" and component_id in components:
+                    components.pop(component_id, None)
+                    if component_id in workspace["order"]:
+                        workspace["order"].remove(component_id)
+                    await broadcast_to_session(session_id, {
+                        "type": "patch",
+                        "operations": [{"op": "remove", "componentId": component_id}],
+                    })
+
+                elif action == "reorder" and component_id in components:
+                    new_index = payload.get("newIndex", 0)
+                    order = workspace["order"]
+                    if component_id in order:
+                        order.remove(component_id)
+                    order.insert(min(new_index, len(order)), component_id)
+                    await broadcast_to_session(session_id, {
+                        "type": "patch",
+                        "operations": [{"op": "reorder", "componentId": component_id, "newIndex": new_index}],
+                    })
+
+            elif msg_type == "register_push_token":
+                token = message.get("token", "")
+                if token:
+                    register_token(session_id, token)
+                    logger.info("Push token registered for session %s", session_id)
 
             elif msg_type == "sync_request":
                 workspace = get_or_create_workspace(session_id)
