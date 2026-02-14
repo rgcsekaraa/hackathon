@@ -33,8 +33,18 @@ export default function TabLayout() {
         }}
       >
         <Tabs.Screen
+          name="dashboard"
+          options={{
+            title: "Home",
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="home" size={size} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
           name="leads"
           options={{
+            href: null, // Hide from tab bar
             title: "Leads",
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="flash" size={size} color={color} />
@@ -44,6 +54,7 @@ export default function TabLayout() {
         <Tabs.Screen
           name="schedule"
           options={{
+            href: null, // Hide from tab bar
             title: "Schedule",
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="calendar" size={size} color={color} />

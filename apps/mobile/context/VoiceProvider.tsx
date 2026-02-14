@@ -13,13 +13,12 @@ import {
 } from "@livekit/react-native";
 import { ConnectionState } from "livekit-client";
 import { registerGlobals } from "@livekit/react-native";
+import { useAuth } from "./AuthProvider";
 
 // Register WebRTC globals
 registerGlobals();
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:8000";
-const DEMO_EMAIL = "demo@example.com";
-const DEMO_PASS = "demo123";
 
 interface VoiceContextState {
   connect: () => Promise<void>;
@@ -39,55 +38,12 @@ export function useVoice(): VoiceContextState {
 }
 
 export function VoiceProvider({ children }: { children: ReactNode }) {
+  const { token: authToken } = useAuth();
   const [roomToken, setRoomToken] = useState("");
   const [wsUrl, setWsUrl] = useState("");
-  const [authToken, setAuthToken] = useState("");
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [agentState, setAgentState] = useState<"listening" | "speaking" | "thinking" | "idle">("idle");
-
-  // 1. Auto-authenticate on mount to get API Access Token
-  useEffect(() => {
-    const authenticate = async () => {
-      try {
-        console.log("Auto-authenticating for Voice API...");
-        // Try login
-        let res = await fetch(`${API_URL}/auth/login`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: DEMO_EMAIL, password: DEMO_PASS }),
-        });
-
-        if (res.status === 401) {
-          // Try signup
-          console.log("Login failed, trying signup...");
-          res = await fetch(`${API_URL}/auth/signup`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              email: DEMO_EMAIL,
-              password: DEMO_PASS,
-              full_name: "Demo Tradie",
-            }),
-          });
-        }
-
-        if (res.ok) {
-          const data = await res.json();
-          setAuthToken(data.access_token);
-          console.log("Voice API Authenticated");
-        } else {
-          console.error("Auth failed", await res.text());
-          setError("Authentication failed");
-        }
-      } catch (err) {
-        console.error("Auth error", err);
-        setError("Network error during auth");
-      }
-    };
-
-    authenticate();
-  }, []);
 
   // 2. Connect to LiveKit Room
   const connect = useCallback(async () => {
