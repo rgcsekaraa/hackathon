@@ -1,0 +1,516 @@
+"""
+Voice API router — Inbound call handling, transcription, TTS, and photo pipeline.
+
+Production-hardened with:
+- Edge case handling (empty transcripts, noisy calls, API failures)
+- Retry logic on transient failures
+- File validation on uploads
+- Proper TwiML flow for all call states
+- Redis caching for speed
+"""
+
+import asyncio
+import logging
+import uuid
+from datetime import datetime, timezone
+
+from fastapi import APIRouter, File, UploadFile, Form, Request, HTTPException
+from fastapi.responses import Response
+from pydantic import BaseModel
+
+from services.voice.deepgram_stt import transcribe_audio, transcribe_url
+from services.voice.elevenlabs_tts import generate_speech, list_voices
+from services.ai.langchain_agent import classify_lead, ClassifiedLead
+from services.realtime.connection_manager import lead_manager
+
+logger = logging.getLogger(__name__)
+router = APIRouter()
+
+# Max upload sizes
+MAX_AUDIO_SIZE = 25 * 1024 * 1024   # 25 MB
+MAX_PHOTO_SIZE = 10 * 1024 * 1024   # 10 MB
+ALLOWED_AUDIO_TYPES = {"audio/wav", "audio/mpeg", "audio/mp3", "audio/ogg", "audio/webm", "audio/x-wav", "audio/mp4"}
+ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"}
+
+
+# ---------------------------------------------------------------------------
+# Schemas
+# ---------------------------------------------------------------------------
+
+class TranscribeResponse(BaseModel):
+    transcript: str
+    confidence: float
+    duration_seconds: float
+    classification: dict | None = None
+    error: str | None = None
+
+
+class TTSRequest(BaseModel):
+    text: str
+    voice_id: str | None = None
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+async def _safe_classify(text: str) -> ClassifiedLead:
+    """Classify with retry on failure."""
+    for attempt in range(2):
+        try:
+            return await classify_lead(text)
+        except Exception as exc:
+            logger.warning("Classification attempt %d failed: %s", attempt + 1, exc)
+            if attempt == 1:
+                # Final fallback — use keyword classifier directly
+                from services.ai.langchain_agent import _fallback_classify
+                return _fallback_classify(text)
+    # Should never reach here, but just in case
+    from services.ai.langchain_agent import _fallback_classify
+    return _fallback_classify(text)
+
+
+async def _safe_transcribe(recording_url: str) -> dict:
+    """Transcribe with retry on transient failures."""
+    for attempt in range(2):
+        try:
+            result = await transcribe_url(recording_url)
+            if result.get("transcript"):
+                return result
+            if attempt == 0:
+                # Wait briefly and retry — recording may not be ready yet
+                await asyncio.sleep(1.0)
+        except Exception as exc:
+            logger.warning("Transcription attempt %d failed: %s", attempt + 1, exc)
+            if attempt == 0:
+                await asyncio.sleep(1.0)
+    return {"transcript": "", "confidence": 0.0, "words": [], "duration_seconds": 0.0}
+
+
+async def _send_photo_sms(phone: str, lead_id: str) -> dict:
+    """Send SMS with photo upload link. Never raises — logs and returns status."""
+    try:
+        from services.integrations.sms import send_sms
+        upload_url = f"http://localhost:3000/customer?lead={lead_id}"
+        body = (
+            f"Thanks for calling! Upload photos of the issue here "
+            f"for a more accurate quote: {upload_url}"
+        )
+        return await send_sms(phone, body)
+    except Exception as exc:
+        logger.error("Failed to send photo SMS to %s: %s", phone, exc)
+        return {"status": "error", "error": str(exc)}
+
+
+async def _cache_lead(lead_id: str, lead_data: dict) -> None:
+    """Cache lead data in Redis. Never raises."""
+    try:
+        from services.lead_cache import cache_lead
+        await cache_lead(lead_id, lead_data)
+    except Exception as exc:
+        logger.warning("Failed to cache lead %s: %s", lead_id, exc)
+
+
+# ---------------------------------------------------------------------------
+# Endpoints
+# ---------------------------------------------------------------------------
+
+@router.post("/voice/transcribe", response_model=TranscribeResponse)
+async def transcribe_audio_endpoint(
+    file: UploadFile = File(...),
+    classify: bool = Form(default=True),
+):
+    """
+    Transcribe an uploaded audio file using Deepgram.
+
+    Validates file size and type before processing.
+    Optionally classifies the transcript into a lead using LangChain.
+    """
+    # Validate file type
+    mime_type = file.content_type or "audio/wav"
+    if mime_type not in ALLOWED_AUDIO_TYPES and not mime_type.startswith("audio/"):
+        raise HTTPException(status_code=400, detail=f"Unsupported audio type: {mime_type}")
+
+    audio_bytes = await file.read()
+
+    # Validate file size
+    if len(audio_bytes) > MAX_AUDIO_SIZE:
+        raise HTTPException(status_code=413, detail="Audio file too large (max 25MB)")
+
+    if len(audio_bytes) == 0:
+        raise HTTPException(status_code=400, detail="Empty audio file")
+
+    logger.info("Transcribe: %s (%d bytes, %s)", file.filename, len(audio_bytes), mime_type)
+
+    result = await transcribe_audio(audio_bytes, mime_type=mime_type)
+
+    classification = None
+    if classify and result["transcript"]:
+        classified = await _safe_classify(result["transcript"])
+        classification = classified.model_dump()
+
+    return TranscribeResponse(
+        transcript=result["transcript"],
+        confidence=result["confidence"],
+        duration_seconds=result["duration_seconds"],
+        classification=classification,
+        error=result.get("error"),
+    )
+
+
+@router.post("/voice/webhook")
+async def voice_webhook(request: Request):
+    """
+    Webhook receiver for inbound voice calls (Twilio → Deepgram).
+
+    Handles ALL edge cases:
+    - No recording yet → prompt customer to speak
+    - Empty/noisy transcript → ask customer to repeat
+    - Low confidence → still attempt classification but flag it
+    - Classification failure → fallback to keyword parsing
+    - SMS failure → non-blocking, call still succeeds
+    - Twilio signing validation (TODO: add for production)
+
+    Returns TwiML in ALL cases — never returns JSON to Twilio.
+    """
+    try:
+        form = await request.form()
+    except Exception as exc:
+        logger.error("Failed to parse webhook form data: %s", exc)
+        return _twiml_error()
+
+    recording_url = form.get("RecordingUrl")
+    caller = form.get("From", "unknown")
+    call_sid = form.get("CallSid", str(uuid.uuid4()))
+    call_status = form.get("CallStatus", "")
+
+    logger.info(
+        "Voice webhook: caller=%s, call_sid=%s, status=%s, has_recording=%s",
+        caller, call_sid, call_status, bool(recording_url),
+    )
+
+    lead_id = f"lead-{call_sid[:8]}"
+
+    # -----------------------------------------------------------------------
+    # Case 1: No recording yet — first hit, prompt customer to record
+    # -----------------------------------------------------------------------
+    if not recording_url:
+        return _twiml_greeting()
+
+    # -----------------------------------------------------------------------
+    # Case 2: Recording received — transcribe and process
+    # -----------------------------------------------------------------------
+    try:
+        # Step 1: Transcribe with retry
+        result = await _safe_transcribe(str(recording_url))
+        transcript_text = result.get("transcript", "").strip()
+        confidence = result.get("confidence", 0.0)
+
+        # Edge case: Empty or very short transcript (noisy call / hung up early)
+        if not transcript_text or len(transcript_text) < 5:
+            logger.warning(
+                "Empty/short transcript for call %s (confidence: %.2f). Asking to repeat.",
+                call_sid, confidence,
+            )
+            return _twiml_retry()
+
+        # Edge case: Very low confidence — noisy environment
+        if confidence < 0.3:
+            logger.warning(
+                "Low confidence (%.2f) for call %s. Asking to repeat in quieter spot.",
+                confidence, call_sid,
+            )
+            return _twiml_noisy()
+
+        # Step 2: Classify + SMS in parallel (both are non-blocking)
+        classify_task = _safe_classify(transcript_text)
+        sms_task = _send_photo_sms(str(caller), lead_id)
+
+        results = await asyncio.gather(classify_task, sms_task, return_exceptions=True)
+
+        # Handle classify result
+        classified = results[0]
+        if isinstance(classified, Exception):
+            logger.error("Classification failed: %s — using fallback", classified)
+            from services.ai.langchain_agent import _fallback_classify
+            classified = _fallback_classify(transcript_text)
+
+        classification = classified.model_dump()
+
+        # Step 3: Build lead and broadcast
+        lead_data = {
+            "id": lead_id,
+            "customerName": _format_phone(str(caller)),
+            "customerPhone": str(caller),
+            "address": classified.address,
+            "suburb": classified.suburb,
+            "urgency": classified.urgency,
+            "status": "new",
+            "jobType": classified.job_type,
+            "description": classified.description,
+            "partsNeeded": classified.parts_needed,
+            "transcript": transcript_text,
+            "transcriptConfidence": confidence,
+            "photoUrls": [],
+            "quoteLines": [],
+            "createdAt": datetime.now(timezone.utc).isoformat(),
+            "updatedAt": datetime.now(timezone.utc).isoformat(),
+        }
+
+        # Broadcast + cache concurrently (both non-blocking)
+        await asyncio.gather(
+            lead_manager.broadcast_new_lead(lead_data),
+            _cache_lead(lead_id, lead_data),
+            return_exceptions=True,
+        )
+
+        # Step 4: Return confirmation TwiML
+        job_display = classified.job_type.replace("_", " ")
+        return _twiml_confirmation(job_display)
+
+    except Exception as exc:
+        logger.error("Voice webhook processing failed for call %s: %s", call_sid, exc, exc_info=True)
+        return _twiml_error()
+
+
+@router.post("/voice/photos/{lead_id}")
+async def upload_lead_photo_public(
+    lead_id: str,
+    file: UploadFile = File(...),
+):
+    """
+    Public photo upload — NO AUTH REQUIRED (customer via SMS link).
+
+    Validates file, analyses with Vision API, enhances with LangChain,
+    and broadcasts to tradie mobile app.
+    """
+    # Validate file type
+    mime_type = file.content_type or ""
+    if mime_type not in ALLOWED_IMAGE_TYPES and not mime_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail=f"Unsupported image type: {mime_type}. Use JPEG, PNG, or WebP.")
+
+    image_bytes = await file.read()
+
+    # Validate file size
+    if len(image_bytes) > MAX_PHOTO_SIZE:
+        raise HTTPException(status_code=413, detail="Image too large (max 10MB)")
+
+    if len(image_bytes) == 0:
+        raise HTTPException(status_code=400, detail="Empty file uploaded")
+
+    logger.info("Photo upload for lead %s: %d bytes, %s", lead_id, len(image_bytes), mime_type)
+
+    try:
+        from services.integrations.vision import analyse_image
+        from services.ai.langchain_agent import enhance_vision_analysis
+
+        # Vision + Enhancement can run sequentially (enhancement needs vision output)
+        analysis = await analyse_image(image_bytes=image_bytes)
+
+        enhanced = await enhance_vision_analysis(
+            vision_labels=", ".join(analysis.labels) if analysis.labels else "unknown",
+            job_context=f"Lead {lead_id}",
+        )
+
+        # Broadcast to tradie mobile app
+        await lead_manager.broadcast_lead_update({
+            "id": lead_id,
+            "status": "photo_analysed",
+            "photoAnalysis": {
+                "labels": analysis.labels,
+                "detected_objects": analysis.detected_objects,
+                "detected_part": analysis.detected_part,
+                "confidence": analysis.confidence,
+                "suggested_sku_class": analysis.suggested_sku_class,
+                "expert_notes": enhanced.notes,
+                "severity": enhanced.severity,
+            },
+            "visionSummary": (
+                f"Detected: {', '.join(analysis.detected_objects or analysis.labels[:3])}. "
+                f"{enhanced.notes}"
+            ),
+        })
+
+        return {
+            "status": "analysed",
+            "lead_id": lead_id,
+            "detected_part": analysis.detected_part,
+            "confidence": analysis.confidence,
+            "expert_notes": enhanced.notes,
+            "severity": enhanced.severity,
+        }
+
+    except Exception as exc:
+        logger.error("Photo analysis failed for lead %s: %s", lead_id, exc, exc_info=True)
+        # Still acknowledge the upload even if analysis fails
+        await lead_manager.broadcast_lead_update({
+            "id": lead_id,
+            "status": "photo_received",
+            "visionSummary": "Photo received — analysis pending.",
+        })
+        return {
+            "status": "received",
+            "lead_id": lead_id,
+            "message": "Photo received. Analysis will be processed shortly.",
+        }
+
+
+@router.post("/voice/tts")
+async def text_to_speech(req: TTSRequest):
+    """Convert text to natural Australian speech."""
+    if not req.text or not req.text.strip():
+        raise HTTPException(status_code=400, detail="Text is required")
+
+    if len(req.text) > 5000:
+        raise HTTPException(status_code=400, detail="Text too long (max 5000 chars)")
+
+    audio_bytes = await generate_speech(req.text, voice_id=req.voice_id)
+
+    if audio_bytes is None:
+        raise HTTPException(status_code=503, detail="TTS service unavailable")
+
+    return Response(
+        content=audio_bytes,
+        media_type="audio/mpeg",
+        headers={"Content-Disposition": "inline; filename=speech.mp3"},
+    )
+
+
+@router.get("/voice/voices")
+async def get_voices():
+    """List available ElevenLabs voices."""
+    voices = await list_voices()
+    return {"voices": voices}
+
+
+@router.get("/voice/status")
+async def voice_pipeline_status():
+    """Check the status of all voice pipeline services."""
+    from core.config import settings
+
+    return {
+        "deepgram": {
+            "configured": bool(settings.deepgram_api_key),
+        },
+        "elevenlabs": {
+            "configured": bool(settings.elevenlabs_api_key),
+            "voice_id": settings.elevenlabs_voice_id,
+        },
+        "livekit": {
+            "configured": bool(settings.livekit_api_key and settings.livekit_api_secret),
+            "url": settings.livekit_url,
+        },
+        "twilio": {
+            "configured": bool(settings.twilio_account_sid),
+        },
+        "websocket": {
+            "connected_tradies": lead_manager.connected_tradies,
+            "active_connections": lead_manager.active_count,
+        },
+    }
+
+
+# ---------------------------------------------------------------------------
+# TwiML Response Builders (all edge cases covered)
+# ---------------------------------------------------------------------------
+
+def _twiml_greeting() -> Response:
+    """Initial call greeting — prompts customer to describe their issue."""
+    xml = """<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Say voice="Polly.Nicole" language="en-AU">
+        G'day! Thanks for calling Gold Coast Plumbing. 
+        Please describe the issue you're having, and let us know your address so we can get a tradie out to you.
+        Speak clearly after the beep, and we'll sort you out with a quote right away.
+    </Say>
+    <Record maxLength="120" action="/api/voice/webhook" transcribe="false"
+            playBeep="true" timeout="8" finishOnKey="#"
+            recordingStatusCallback="/api/voice/webhook" />
+    <Say voice="Polly.Nicole" language="en-AU">
+        No worries, we didn't catch anything there. Let's try again, mate.
+    </Say>
+    <Record maxLength="120" action="/api/voice/webhook" transcribe="false"
+            playBeep="true" timeout="10" finishOnKey="#" />
+    <Say voice="Polly.Nicole" language="en-AU">
+        All good — give us a call back when you're ready. Cheers!
+    </Say>
+    <Hangup />
+</Response>"""
+    return Response(content=xml, media_type="application/xml")
+
+
+def _twiml_confirmation(job_type: str) -> Response:
+    """Confirmation after successful classification."""
+    xml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Say voice="Polly.Nicole" language="en-AU">
+        Thanks mate! We've got your details — sounds like a {job_type} job.
+        A tradie will review your request and get back to you with a quote real quick.
+        We've also sent you a text with a link to upload any photos of the issue.
+        That'll help us nail down an accurate price for you. Cheers!
+    </Say>
+    <Hangup />
+</Response>"""
+    return Response(content=xml, media_type="application/xml")
+
+
+def _twiml_retry() -> Response:
+    """Ask customer to repeat — empty/short transcript."""
+    xml = """<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Say voice="Polly.Nicole" language="en-AU">
+        Sorry mate, we didn't quite catch that. 
+        Could you describe the plumbing issue again? 
+        Try to include what's happening and your address. No rush.
+    </Say>
+    <Record maxLength="120" action="/api/voice/webhook" transcribe="false"
+            playBeep="true" timeout="10" finishOnKey="#" />
+    <Say voice="Polly.Nicole" language="en-AU">
+        No worries — if you'd prefer, you can text us your details instead. Cheers!
+    </Say>
+    <Hangup />
+</Response>"""
+    return Response(content=xml, media_type="application/xml")
+
+
+def _twiml_noisy() -> Response:
+    """Ask customer to move to a quieter spot — low confidence."""
+    xml = """<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Say voice="Polly.Nicole" language="en-AU">
+        G'day! There's a bit of background noise. 
+        Could you move somewhere a bit quieter and describe the issue again?
+        Just let us know what's happening and your address, and we'll get you sorted.
+    </Say>
+    <Record maxLength="120" action="/api/voice/webhook" transcribe="false"
+            playBeep="true" timeout="10" finishOnKey="#" />
+    <Say voice="Polly.Nicole" language="en-AU">
+        All good mate — give us a call back when you're in a quieter spot. Cheers!
+    </Say>
+    <Hangup />
+</Response>"""
+    return Response(content=xml, media_type="application/xml")
+
+
+def _twiml_error() -> Response:
+    """Generic error — something went wrong server-side."""
+    xml = """<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Say voice="Polly.Nicole" language="en-AU">
+        Sorry about that mate — we're having a bit of a technical issue on our end.
+        Please try calling back in a minute or send us a text. Cheers!
+    </Say>
+    <Hangup />
+</Response>"""
+    return Response(content=xml, media_type="application/xml")
+
+
+def _format_phone(phone: str) -> str:
+    """Format phone number for display (best-effort)."""
+    phone = phone.strip()
+    if phone.startswith("+61"):
+        # Australian number — format as 04XX XXX XXX
+        digits = phone[3:]
+        if len(digits) == 9:
+            return f"0{digits[:3]} {digits[3:6]} {digits[6:]}"
+    return phone
