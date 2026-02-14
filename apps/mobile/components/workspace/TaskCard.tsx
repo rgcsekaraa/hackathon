@@ -2,7 +2,7 @@ import { View, Text, StyleSheet, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
-import { useColors, typography } from "../../lib/theme";
+import { useColors, typography, SHAPE } from "../../lib/theme";
 
 interface TaskCardProps {
   id: string;
@@ -27,8 +27,8 @@ const TIME_SLOT_LABELS: Record<string, string> = {
 };
 
 /**
- * Native task card with priority indicator, completion toggle,
- * haptic feedback, and swipe-to-delete support.
+ * Workspace task card - Redesigned for production-grade high-density dashboard.
+ * Horizontal layout inspired by Sophiie.ai Inbox. Matches the web implementation.
  */
 export function TaskCard({
   id,
@@ -59,86 +59,76 @@ export function TaskCard({
       style={[
         styles.card,
         {
-          backgroundColor: completed ? `${colors.success}10` : colors.surface,
-          borderLeftColor: priorityColor,
+          backgroundColor: colors.surface,
           borderColor: colors.border,
-          opacity: completed ? 0.7 : 1,
+          opacity: completed ? 0.6 : 1,
         },
       ]}
     >
       <View style={styles.row}>
-        {/* Completion toggle */}
-        <Pressable onPress={handleToggle} hitSlop={8}>
-          <Ionicons
-            name={completed ? "checkmark-circle" : "ellipse-outline"}
-            size={22}
-            color={completed ? colors.success : colors.textSecondary}
-          />
-        </Pressable>
-
-        {/* Content */}
+        {/* Content Area */}
         <View style={styles.content}>
+          <View style={styles.headerRow}>
+            <Text
+              style={[
+                typography.body,
+                {
+                  color: colors.text,
+                  fontWeight: "700",
+                  fontSize: 15,
+                  textDecorationLine: completed ? "line-through" : "none",
+                },
+              ]}
+              numberOfLines={1}
+            >
+              {title}
+            </Text>
+            {/* Priority Micro-dot */}
+            <View style={[styles.priorityDot, { backgroundColor: priorityColor }]} />
+            <View style={{ flex: 1 }} />
+            <Text style={[typography.caption, { color: colors.textSecondary, fontWeight: "600" }]}>
+               {timeSlot ? (TIME_SLOT_LABELS[timeSlot] || timeSlot) : "All day"}
+            </Text>
+          </View>
+
+          <View style={styles.metaRow}>
+            {priority !== "normal" && (
+              <Text style={[typography.caption, { color: priorityColor, fontWeight: "700", fontSize: 10 }]}>
+                • {priority.toUpperCase()}
+              </Text>
+            )}
+            {date && (
+              <Text style={[typography.caption, { color: colors.textSecondary, fontSize: 11 }]}>
+                {priority !== "normal" ? " | " : ""}{date}
+              </Text>
+            )}
+          </View>
+
           <Text
-            style={[
-              typography.body,
-              {
-                color: completed ? colors.textSecondary : colors.text,
-                textDecorationLine: completed ? "line-through" : "none",
-                fontWeight: "600",
-              },
-            ]}
+            style={[typography.bodySmall, { color: colors.textSecondary, marginTop: 4, lineHeight: 18 }]}
             numberOfLines={2}
           >
-            {title}
+            {description || "No additional details provided."}
           </Text>
-
-          {description ? (
-            <Text
-              style={[typography.bodySmall, { color: colors.textSecondary, marginTop: 2 }]}
-              numberOfLines={2}
-            >
-              {description}
-            </Text>
-          ) : null}
-
-          {/* Badges */}
-          <View style={styles.badges}>
-            {priority !== "normal" && (
-              <View
-                style={[
-                  styles.badge,
-                  {
-                    backgroundColor: `${priorityColor}18`,
-                    borderColor: `${priorityColor}40`,
-                  },
-                ]}
-              >
-                <Text style={[typography.caption, { color: priorityColor, fontWeight: "600" }]}>
-                  {priority.charAt(0).toUpperCase() + priority.slice(1)}
-                </Text>
-              </View>
-            )}
-            {timeSlot ? (
-              <View style={[styles.badge, { borderColor: colors.border }]}>
-                <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                  {TIME_SLOT_LABELS[timeSlot] || timeSlot}
-                </Text>
-              </View>
-            ) : null}
-            {date ? (
-              <View style={[styles.badge, { borderColor: colors.border }]}>
-                <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                  {date}
-                </Text>
-              </View>
-            ) : null}
-          </View>
         </View>
 
-        {/* Delete button */}
-        <Pressable onPress={handleDelete} hitSlop={8} style={styles.deleteBtn}>
-          <Ionicons name="trash-outline" size={18} color={colors.textSecondary} />
-        </Pressable>
+        {/* Action Column */}
+        <View style={styles.actionColumn}>
+          <Pressable
+            onPress={handleToggle}
+            hitSlop={8}
+            style={[styles.actionBtn, completed && { backgroundColor: `${colors.success}15` }]}
+          >
+            <Ionicons
+              name={completed ? "checkmark-circle" : "checkmark-circle-outline"}
+              size={20}
+              color={completed ? colors.success : colors.textSecondary}
+            />
+          </Pressable>
+          <Pressable onPress={handleDelete} hitSlop={8} style={styles.actionBtn}>
+            <Ionicons name="trash-outline" size={18} color={colors.error} style={{ opacity: 0.8 }} />
+          </Pressable>
+        </View>
       </View>
     </View>
   );
@@ -146,35 +136,45 @@ export function TaskCard({
 
 const styles = StyleSheet.create({
   card: {
-    borderLeftWidth: 4,
     borderWidth: 1,
-    borderRadius: 12,
-    marginBottom: 10,
+    borderRadius: SHAPE.borderRadius,
+    marginBottom: 6,
     overflow: "hidden",
   },
   row: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    padding: 12,
-    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 12,
   },
   content: {
     flex: 1,
   },
-  badges: {
+  headerRow: {
     flexDirection: "row",
-    flexWrap: "wrap",
+    alignItems: "center",
+    marginBottom: 0,
     gap: 6,
-    marginTop: 8,
   },
-  badge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-    borderWidth: 1,
+  priorityDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
   },
-  deleteBtn: {
-    opacity: 0.5,
-    padding: 2,
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 1,
+  },
+  actionColumn: {
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 10,
+  },
+  actionBtn: {
+    padding: 6,
+    borderRadius: SHAPE.borderRadius,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });
