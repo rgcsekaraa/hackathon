@@ -38,6 +38,12 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 60 * 24 * 7  # 7 days for dev convenience
 
+    # OAuth2 / Google SSO
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    # In dev, this might be http://localhost:8001/auth/google/callback
+    google_redirect_uri: str = "http://localhost:8001/auth/google/callback"
+
     model_config = {
         "env_file": ".env",
         "env_file_encoding": "utf-8",

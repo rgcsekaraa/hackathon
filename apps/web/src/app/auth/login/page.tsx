@@ -9,6 +9,8 @@ import Typography from "@mui/material/Typography";
 import Alert from "@mui/material/Alert";
 import Paper from "@mui/material/Paper";
 import Link from "@mui/material/Link";
+import Divider from "@mui/material/Divider";
+import CircularProgress from "@mui/material/CircularProgress";
 import { useAuth } from "@/context/AuthContext";
 
 export default function LoginPage() {
@@ -127,9 +129,62 @@ export default function LoginPage() {
             variant="contained"
             size="large"
             disabled={loading}
-            sx={{ mt: 3, py: 1.5, fontWeight: 700 }}
+            sx={{ mt: 3, py: 1.5, fontWeight: 700, borderRadius: "4px", boxShadow: "none" }}
           >
-            {loading ? "Signing in..." : "Sign In"}
+            {loading ? <CircularProgress size={24} color="inherit" /> : "Sign In"}
+          </Button>
+
+          <Divider sx={{ my: 3 }}>
+            <Typography variant="caption" color="text.disabled" sx={{ px: 1, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em" }}>
+              OR
+            </Typography>
+          </Divider>
+
+          <Button
+            fullWidth
+            variant="outlined"
+            size="large"
+            onClick={() => window.location.href = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'}/auth/google/login`}
+            sx={{
+              py: 1.5,
+              borderRadius: "4px",
+              textTransform: "none",
+              fontWeight: 700,
+              fontSize: "1rem",
+              color: "text.primary",
+              borderColor: "divider",
+              bgcolor: "background.paper",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 1.5,
+              boxShadow: "none",
+              "&:hover": {
+                borderColor: "text.primary",
+                bgcolor: "action.hover",
+                boxShadow: "none",
+              },
+            }}
+          >
+            <svg width="18" height="18" viewBox="0 0 18 18">
+              <path
+                fill="#4285F4"
+                d="M17.64 9.2c0-.63-.06-1.25-.16-1.84H9v3.49h4.84a4.14 4.14 0 0 1-1.8 2.71v2.26h2.91c1.71-1.58 2.69-3.91 2.69-6.62z"
+              />
+              <path
+                fill="#34A853"
+                d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.91-2.26c-.8.54-1.83.86-3.05.86-2.34 0-4.33-1.58-5.04-3.71H.95v2.33C2.43 15.89 5.5 18 9 18z"
+              />
+              <path
+                fill="#FBBC05"
+                d="M3.96 10.71a5.41 5.41 0 0 1 0-3.42V4.96H.95a8.99 8.99 0 0 0 0 8.08l3.01-2.33z"
+              />
+              <path
+                fill="#EA4335"
+                d="M9 3.58c1.32 0 2.5.45 3.44 1.35L15 2.45C13.46.99 11.42 0 9 0 5.5 0 2.43 2.11.95 5.12l3.01 2.33c.71-2.13 2.7-3.71 5.04-3.71z"
+              />
+            </svg>
+            Continue with Google
           </Button>
         </form>
 

@@ -60,3 +60,9 @@ async def login(credentials: UserLogin, db: AsyncSession = Depends(get_db)):
         "token_type": "bearer",
         "user": user
     }
+from core.deps import get_current_user
+
+@router.get("/me", response_model=UserOut)
+async def get_me(current_user: User = Depends(get_current_user)):
+    """Return the currently authenticated user's profile."""
+    return current_user

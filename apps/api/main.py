@@ -10,7 +10,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from core.config import settings
-from routers import health, session, auth
+from routers import health, session, auth, oauth
 from db.init_db import init_db
 
 
@@ -41,4 +41,5 @@ app.add_middleware(
 
 app.include_router(health.router, tags=["health"])
 app.include_router(auth.router, prefix="/auth", tags=["auth"])
+app.include_router(oauth.router, prefix="/auth", tags=["oauth"])
 app.include_router(session.router, tags=["session"])
