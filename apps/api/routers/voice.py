@@ -22,6 +22,8 @@ from services.voice.deepgram_stt import transcribe_audio, transcribe_url
 from services.voice.elevenlabs_tts import generate_speech, list_voices
 from services.ai.langchain_agent import classify_lead, ClassifiedLead
 from services.realtime.connection_manager import lead_manager
+from services.tradie_context import load_tradie_context, get_tradie_context_for_ai
+from db.session import get_db_context
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -54,11 +56,11 @@ class TTSRequest(BaseModel):
 # Helpers
 # ---------------------------------------------------------------------------
 
-async def _safe_classify(text: str) -> ClassifiedLead:
-    """Classify with retry on failure."""
+async def _safe_classify(text: str, tradie_context: str = "") -> ClassifiedLead:
+    """Classify with retry on failure. Injects tradie context into prompt."""
     for attempt in range(2):
         try:
-            return await classify_lead(text)
+            return await classify_lead(text, context=tradie_context)
         except Exception as exc:
             logger.warning("Classification attempt %d failed: %s", attempt + 1, exc)
             if attempt == 1:
@@ -191,11 +193,23 @@ async def voice_webhook(request: Request):
 
     lead_id = f"lead-{call_sid[:8]}"
 
+    # Pre-load tradie context for this call (from Redis cache or DB)
+    tradie_ctx = {}
+    tradie_ctx_text = ""
+    try:
+        async with get_db_context() as db:
+            tradie_ctx = await load_tradie_context(db)
+            tradie_ctx_text = get_tradie_context_for_ai(tradie_ctx)
+    except Exception as exc:
+        logger.warning("Failed to load tradie context: %s — using defaults", exc)
+
+    business_name = tradie_ctx.get("business_name", "Gold Coast Plumbing")
+
     # -----------------------------------------------------------------------
     # Case 1: No recording yet — first hit, prompt customer to record
     # -----------------------------------------------------------------------
     if not recording_url:
-        return _twiml_greeting()
+        return _twiml_greeting(business_name)
 
     # -----------------------------------------------------------------------
     # Case 2: Recording received — transcribe and process
@@ -222,8 +236,8 @@ async def voice_webhook(request: Request):
             )
             return _twiml_noisy()
 
-        # Step 2: Classify + SMS in parallel (both are non-blocking)
-        classify_task = _safe_classify(transcript_text)
+        # Step 2: Classify (with tradie context) + SMS in parallel
+        classify_task = _safe_classify(transcript_text, tradie_context=tradie_ctx_text)
         sms_task = _send_photo_sms(str(caller), lead_id)
 
         results = await asyncio.gather(classify_task, sms_task, return_exceptions=True)
@@ -237,7 +251,27 @@ async def voice_webhook(request: Request):
 
         classification = classified.model_dump()
 
-        # Step 3: Build lead and broadcast
+        # Step 3: Check service area — reject out-of-range customers
+        if classified.suburb and classified.suburb != "unknown":
+            service_radius = tradie_ctx.get("service_radius_km", 50)
+            base_address = tradie_ctx.get("base_address", "")
+            if base_address and classified.suburb:
+                try:
+                    from services.integrations.distance import calculate_distance
+                    dist = await calculate_distance(base_address, classified.suburb)
+                    if dist.distance_km > service_radius:
+                        logger.info(
+                            "Out of service area: %s is %.1f km away (radius: %.0f km)",
+                            classified.suburb, dist.distance_km, service_radius,
+                        )
+                        return _twiml_out_of_area(classified.suburb, service_radius, business_name)
+                except Exception as exc:
+                    logger.warning("Distance check failed: %s — proceeding anyway", exc)
+
+        # Step 4: Build lead with tradie context and broadcast
+        next_slot = tradie_ctx.get("next_available_slots", [{}])
+        next_slot_display = next_slot[0].get("display", "soon") if next_slot else "soon"
+
         lead_data = {
             "id": lead_id,
             "customerName": _format_phone(str(caller)),
@@ -251,6 +285,9 @@ async def voice_webhook(request: Request):
             "partsNeeded": classified.parts_needed,
             "transcript": transcript_text,
             "transcriptConfidence": confidence,
+            "tradieId": tradie_ctx.get("tradie_id"),
+            "businessName": business_name,
+            "nextAvailableSlot": next_slot_display,
             "photoUrls": [],
             "quoteLines": [],
             "createdAt": datetime.now(timezone.utc).isoformat(),
@@ -264,9 +301,9 @@ async def voice_webhook(request: Request):
             return_exceptions=True,
         )
 
-        # Step 4: Return confirmation TwiML
+        # Step 5: Return confirmation TwiML with business name + next slot
         job_display = classified.job_type.replace("_", " ")
-        return _twiml_confirmation(job_display)
+        return _twiml_confirmation(job_display, business_name, next_slot_display)
 
     except Exception as exc:
         logger.error("Voice webhook processing failed for call %s: %s", call_sid, exc, exc_info=True)
@@ -414,12 +451,12 @@ async def voice_pipeline_status():
 # TwiML Response Builders (all edge cases covered)
 # ---------------------------------------------------------------------------
 
-def _twiml_greeting() -> Response:
-    """Initial call greeting — prompts customer to describe their issue."""
-    xml = """<?xml version="1.0" encoding="UTF-8"?>
+def _twiml_greeting(business_name: str = "Gold Coast Plumbing") -> Response:
+    """Initial call greeting — uses the tradie's business name."""
+    xml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Say voice="Polly.Nicole" language="en-AU">
-        G'day! Thanks for calling Gold Coast Plumbing. 
+        G'day! Thanks for calling {business_name}. 
         Please describe the issue you're having, and let us know your address so we can get a tradie out to you.
         Speak clearly after the beep, and we'll sort you out with a quote right away.
     </Say>
@@ -439,15 +476,31 @@ def _twiml_greeting() -> Response:
     return Response(content=xml, media_type="application/xml")
 
 
-def _twiml_confirmation(job_type: str) -> Response:
-    """Confirmation after successful classification."""
+def _twiml_confirmation(job_type: str, business_name: str = "our plumber", next_slot: str = "soon") -> Response:
+    """Confirmation with business name and next available slot."""
     xml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Say voice="Polly.Nicole" language="en-AU">
         Thanks mate! We've got your details — sounds like a {job_type} job.
+        {business_name}'s next available slot is {next_slot}.
         A tradie will review your request and get back to you with a quote real quick.
         We've also sent you a text with a link to upload any photos of the issue.
         That'll help us nail down an accurate price for you. Cheers!
+    </Say>
+    <Hangup />
+</Response>"""
+    return Response(content=xml, media_type="application/xml")
+
+
+def _twiml_out_of_area(suburb: str, radius_km: float, business_name: str = "our plumber") -> Response:
+    """Politely decline — customer is outside the tradie's service area."""
+    xml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Say voice="Polly.Nicole" language="en-AU">
+        Thanks for calling {business_name}, mate.
+        Unfortunately, {suburb} is outside our service area — we cover about {radius_km:.0f} kilometres from our base.
+        We'd recommend searching for a local plumber in your area.
+        Sorry about that, and best of luck getting it sorted. Cheers!
     </Say>
     <Hangup />
 </Response>"""

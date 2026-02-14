@@ -6,6 +6,7 @@ from __future__ import annotations
 import logging
 import uuid
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -46,6 +47,7 @@ async def create_or_update_profile(
         profile.base_address = data.base_address
         profile.service_radius_km = data.service_radius_km
         profile.travel_rate_per_km = data.travel_rate_per_km
+        profile.timezone = data.timezone
         profile.working_hours = data.working_hours
     else:
         # Create new
@@ -61,6 +63,7 @@ async def create_or_update_profile(
             base_address=data.base_address,
             service_radius_km=data.service_radius_km,
             travel_rate_per_km=data.travel_rate_per_km,
+            timezone=data.timezone,
             working_hours=data.working_hours,
         )
         db.add(profile)
@@ -113,7 +116,7 @@ async def get_schedule(
     booked_leads = result.scalars().all()
     booked_slots = {(l.booked_date, l.booked_time_slot) for l in booked_leads if l.booked_date}
 
-    # Build available slots
+    # Build available slots (timezone-aware)
     day_names = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
     default_hours = {
         "mon": ["08:00-12:00", "13:00-17:00"],
@@ -125,8 +128,13 @@ async def get_schedule(
     }
     working = profile.working_hours if profile.working_hours else default_hours
 
+    # Use tradie's timezone for "today" computation
+    tz = ZoneInfo(profile.timezone or "Australia/Brisbane")
+    now_local = datetime.now(tz)
+    today = now_local.date()
+    current_time = now_local.strftime("%H:%M")
+
     slots: list[ScheduleSlot] = []
-    today = datetime.now(timezone.utc).date()
 
     for i in range(days):
         date = today + timedelta(days=i)
@@ -134,11 +142,21 @@ async def get_schedule(
         day_slots = working.get(day_key, [])
 
         for time_slot in day_slots:
+            # Skip past time slots for today
+            if i == 0:
+                slot_start = time_slot.split("-")[0]
+                if slot_start <= current_time:
+                    continue
+
             is_booked = (date.isoformat(), time_slot) in booked_slots
             slots.append(ScheduleSlot(
                 date=date.isoformat(),
                 time_slot=time_slot,
                 available=not is_booked,
+                timezone=profile.timezone or "Australia/Brisbane",
             ))
 
-    return ScheduleResponse(slots=slots)
+    return ScheduleResponse(
+        slots=slots,
+        timezone=profile.timezone or "Australia/Brisbane",
+    )
