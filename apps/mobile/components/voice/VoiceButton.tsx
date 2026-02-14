@@ -7,13 +7,12 @@ import Voice, {
   SpeechErrorEvent,
 } from "@react-native-voice/voice";
 
-import { useColors, typography } from "../../lib/theme";
+import { useColors, typography, SHAPE } from "../../lib/theme";
 import { useWorkspace } from "../../lib/workspace-provider";
 
 /**
  * Voice capture button with real speech-to-text via react-native-voice.
- * Shows pulse animation while recording, displays live transcript,
- * and sends final text to the workspace backend.
+ * Redesigned with the "Sharp Pro" industrial aesthetic.
  */
 export function VoiceButton() {
   const colors = useColors();
@@ -21,8 +20,6 @@ export function VoiceButton() {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [partialResults, setPartialResults] = useState("");
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-  const pulseLoop = useRef<Animated.CompositeAnimation | null>(null);
 
   // Set up Voice event handlers
   useEffect(() => {
@@ -32,7 +29,6 @@ export function VoiceButton() {
 
     Voice.onSpeechEnd = () => {
       setIsListening(false);
-      stopPulse();
     };
 
     Voice.onSpeechResults = (event: SpeechResultsEvent) => {
@@ -40,11 +36,9 @@ export function VoiceButton() {
       setTranscript(text);
       setPartialResults("");
 
-      // Send the final transcript to the backend
       if (text.trim()) {
         sendUtterance(text.trim(), "voice");
-        // Clear transcript after a delay so user can see what was sent
-        setTimeout(() => setTranscript(""), 2000);
+        setTimeout(() => setTranscript(""), 2200);
       }
     };
 
@@ -55,7 +49,6 @@ export function VoiceButton() {
     Voice.onSpeechError = (event: SpeechErrorEvent) => {
       console.error("Speech error:", event.error);
       setIsListening(false);
-      stopPulse();
     };
 
     return () => {
@@ -63,103 +56,76 @@ export function VoiceButton() {
     };
   }, [sendUtterance]);
 
-  const startPulse = useCallback(() => {
-    pulseLoop.current = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1.15,
-          duration: 600,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 600,
-          useNativeDriver: true,
-        }),
-      ])
-    );
-    pulseLoop.current.start();
-  }, [pulseAnim]);
-
-  const stopPulse = useCallback(() => {
-    pulseLoop.current?.stop();
-    Animated.timing(pulseAnim, {
-      toValue: 1,
-      duration: 200,
-      useNativeDriver: true,
-    }).start();
-  }, [pulseAnim]);
-
   const handlePress = useCallback(async () => {
     if (isListening) {
-      // Stop listening
       try {
         await Voice.stop();
       } catch (e) {
         console.error("Failed to stop voice:", e);
       }
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      stopPulse();
     } else {
-      // Start listening
       setTranscript("");
       setPartialResults("");
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-      startPulse();
 
       try {
         await Voice.start("en-US");
       } catch (e) {
         console.error("Failed to start voice:", e);
-        stopPulse();
       }
     }
-  }, [isListening, startPulse, stopPulse]);
+  }, [isListening]);
 
   const displayText = partialResults || transcript;
 
   return (
     <View style={styles.container}>
-      <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-        <Pressable
-          onPress={handlePress}
-          style={({ pressed }) => [
-            styles.button,
-            {
-              backgroundColor: isListening
-                ? `${colors.error}20`
-                : `${colors.primary}15`,
-              borderColor: isListening ? colors.error : colors.primary,
-              opacity: pressed ? 0.8 : 1,
-            },
-          ]}
-        >
-          <Ionicons
-            name={isListening ? "mic-off" : "mic"}
-            size={24}
-            color={isListening ? colors.error : colors.primary}
-          />
-        </Pressable>
-      </Animated.View>
-      {isListening && (
-        <Text
-          style={[typography.caption, styles.label, { color: colors.error }]}
-        >
-          Tap to stop
-        </Text>
-      )}
       {displayText ? (
-        <Text
+        <View 
           style={[
-            typography.bodySmall,
-            styles.transcript,
-            { color: partialResults ? colors.textSecondary : colors.text },
+            styles.transcriptBubble, 
+            { 
+              backgroundColor: isListening ? `${colors.primary}08` : colors.surface, 
+              borderColor: isListening ? colors.primary : colors.border 
+            }
           ]}
-          numberOfLines={2}
         >
-          {displayText}
-        </Text>
+          <Text
+            style={[
+              typography.bodySmall,
+              { 
+                color: partialResults ? colors.textSecondary : colors.text, 
+                fontWeight: "600", 
+                fontSize: 12,
+                textAlign: "center" 
+              },
+            ]}
+            numberOfLines={1}
+          >
+            {displayText.toUpperCase()}
+          </Text>
+        </View>
       ) : null}
+
+      <Pressable
+        onPress={handlePress}
+        style={({ pressed }) => [
+          styles.button,
+          {
+            backgroundColor: isListening ? colors.primary : `${colors.primary}10`,
+            borderColor: colors.primary,
+            borderWidth: isListening ? 0 : 1,
+            opacity: pressed ? 0.8 : 1,
+          },
+        ]}
+      >
+        <Ionicons
+          name={isListening ? "stop" : "mic"}
+          size={20}
+          color={isListening ? "white" : colors.primary}
+        />
+      </Pressable>
     </View>
   );
 }
@@ -169,20 +135,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   button: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    borderWidth: 2,
+    width: 44,
+    height: 44,
+    borderRadius: SHAPE.borderRadius,
     alignItems: "center",
     justifyContent: "center",
   },
-  label: {
-    textAlign: "center",
-    marginTop: 4,
-  },
-  transcript: {
-    textAlign: "center",
-    marginTop: 6,
-    maxWidth: 200,
+  transcriptBubble: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: SHAPE.borderRadius,
+    borderWidth: 1,
+    position: "absolute",
+    top: -46,
+    minWidth: 100,
+    maxWidth: 240,
+    alignSelf: "center",
   },
 });
