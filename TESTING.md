@@ -50,7 +50,7 @@ cd apps/mobile && npx expo start
 ### User Signup & Login
 1. Navigate to `http://localhost:3000/auth/signup`.
 2. Create a new account.
-3. Verify that you are redirected to the dashboard after successful signup.
+3. Verify redirection to the dashboard after successful signup.
 4. Try logging out and logging back in at `http://localhost:3000/auth/login`.
 
 ### Dashboard & Navigation

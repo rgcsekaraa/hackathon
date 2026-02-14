@@ -87,7 +87,7 @@ function MobileWorkspace() {
               All clear for now
             </Typography>
             <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 500 }}>
-              Speak or type to capture ideas and plan your workspace.
+              Speak or type to capture ideas and plan the workspace.
             </Typography>
           </Box>
         ) : (

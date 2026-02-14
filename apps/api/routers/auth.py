@@ -88,7 +88,7 @@ async def forgot_password(req: ForgotPasswordRequest, db: AsyncSession = Depends
     
     if not user:
         # Don't reveal if user exists for security
-        return {"message": "If your email is registered, you will receive a reset link shortly."}
+        return {"message": "If the email is registered, a reset link will be sent shortly."}
     
     token = str(uuid.uuid4())
     user.reset_token = token

@@ -3,7 +3,7 @@
 import { useCallback } from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
-import Grid from "@mui/material/Grid"; // Revert to standard Grid
+import Grid from "@mui/material/Grid2"; // Use Grid2 for MUI v6
 import Paper from "@mui/material/Paper";
 import Chip from "@mui/material/Chip";
 import Divider from "@mui/material/Divider";
@@ -90,10 +90,10 @@ function DashboardWorkspace() {
         {/* Operational Grid */}
         <Grid container spacing={3}>
           {/* Top Row: Command Center & Stats */}
-          <Grid item xs={12} lg={8}>
+          <Grid size={{ xs: 12, lg: 8 }}>
             <CommandCenter />
           </Grid>
-          <Grid item xs={12} lg={4}>
+          <Grid size={{ xs: 12, lg: 4 }}>
             <Paper
               elevation={0}
               sx={{
@@ -130,7 +130,7 @@ function DashboardWorkspace() {
           </Grid>
 
           {/* Main Content: Timeline */}
-          <Grid item xs={12}>
+          <Grid size={{ xs: 12 }}>
             <Box sx={{ mt: 2, mb: 3, display: "flex", alignItems: "center", gap: 1.5 }}>
               <GridViewIcon sx={{ color: "text.secondary" }} />
               <Typography variant="h6" sx={{ fontWeight: 800, letterSpacing: "-0.01em" }}>
@@ -160,13 +160,13 @@ function DashboardWorkspace() {
                   Orbit is currently clear
                 </Typography>
                 <Typography variant="body2" sx={{ color: "text.secondary", fontWeight: 500 }}>
-                  Use the Command Center to simulate inbound calls or load a demo scenario.
+                  Simulate inbound calls or load a demo scenario using the Command Center.
                 </Typography>
               </Box>
             ) : (
               <Grid container spacing={2}>
                 {grouped.map(([date, items]) => (
-                  <Grid item xs={12} md={6} lg={3} key={date}>
+                  <Grid size={{ xs: 12, md: 6, lg: 3 }} key={date}>
                     <Box
                       sx={{
                         mb: 1.5,

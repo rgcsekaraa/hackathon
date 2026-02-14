@@ -25,7 +25,7 @@ interface AIChatSidebarProps {
 export function AIChatSidebar({ onClose }: AIChatSidebarProps) {
   const theme = useTheme();
   const [messages, setMessages] = useState<Message[]>([
-    { role: "assistant", content: "Hello! I'm Sophiie. How can I help you manage your workspace today?" }
+    { role: "assistant", content: "Hello! I'm Sophiie. How can I help manage the workspace today?" }
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -57,7 +57,7 @@ export function AIChatSidebar({ onClose }: AIChatSidebarProps) {
 
       // Mocking AI response for now to show UI flow
       setTimeout(() => {
-        setMessages(prev => [...prev, { role: "assistant", content: `I've analyzed your request: "${userMsg}". I can help you organize those tasks in your workspace.` }]);
+        setMessages(prev => [...prev, { role: "assistant", content: `Request analyzed: "${userMsg}". I can help organize those tasks in the workspace.` }]);
         setLoading(false);
       }, 1000);
 
@@ -103,7 +103,7 @@ export function AIChatSidebar({ onClose }: AIChatSidebarProps) {
             <Box sx={{ display: "flex", alignItems: "center", mb: 0.5, px: 1, gap: 1 }}>
                {msg.role === "assistant" && <SmartToyIcon sx={{ fontSize: 14, color: "primary.main" }} />}
                <Typography variant="caption" sx={{ fontWeight: 700, fontSize: "0.65rem", color: "text.secondary" }}>
-                  {msg.role === "assistant" ? "SOPHIIE" : "YOU"}
+                  {msg.role === "assistant" ? "SOPHIIE" : "USER"}
                </Typography>
             </Box>
             <Box
