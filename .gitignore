@@ -56,4 +56,6 @@ yarn-error.log*
 
 .nx/installation
 .nx/cache
-.nx/workspace-data
+.nx/workspace-data*.db
+__pycache__/
+.venv/

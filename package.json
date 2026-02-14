@@ -9,10 +9,10 @@
   ],
   "scripts": {
     "dev": "pnpm exec nx run-many --target=serve --all --parallel=3",
-    "build": "pnpm exec nx run-many --target=build --all",
+    "build": "NX_DAEMON=false NODE_OPTIONS='--max-old-space-size=4096' GENERATE_SOURCEMAP=false pnpm exec nx build web && NX_DAEMON=false NODE_OPTIONS='--max-old-space-size=4096' pnpm exec nx build mobile",
     "dev:web": "pnpm exec nx dev web",
     "dev:api": "cd apps/api && uv run uvicorn main:app --reload --host 0.0.0.0 --port 8000",
-    "build:web": "pnpm exec nx build web",
+    "build:web": "NX_DAEMON=false NODE_OPTIONS='--max-old-space-size=4096' GENERATE_SOURCEMAP=false pnpm exec nx build web",
     "lint": "pnpm exec nx run-many --target=lint",
     "typecheck": "pnpm exec nx run-many --target=typecheck"
   },
