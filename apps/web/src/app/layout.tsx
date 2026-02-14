@@ -1,17 +1,33 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { QueryProvider } from "@/components/providers/QueryProvider";
+import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
 
 export const metadata: Metadata = {
   title: "Spatial Voice | Realtime AI Workspace",
   description:
     "Voice, text, and touch create and reshape a visual plan in real time. Built for trades professionals who need to plan jobs while moving.",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Spatial Voice",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0c1222",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
 };
 
 /**
  * Root layout wraps the entire app in theme and query providers.
- * No global CSS is imported here -- MUI CssBaseline handles resets.
+ * Configured as a PWA with standalone display and iOS status bar support.
  */
 export default function RootLayout({
   children,
@@ -34,6 +50,7 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
           rel="stylesheet"
         />
+        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
       </head>
       <body>
         <ThemeProvider>
@@ -41,6 +58,7 @@ export default function RootLayout({
             {children}
           </QueryProvider>
         </ThemeProvider>
+        <ServiceWorkerRegistration />
       </body>
     </html>
   );
