@@ -126,7 +126,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             S
           </Box>
           <Typography variant="subtitle1" sx={{ fontWeight: 800, letterSpacing: "-0.02em" }}>
-            sophiie-space
+            Sophiie Orbit
           </Typography>
         </Box>
 

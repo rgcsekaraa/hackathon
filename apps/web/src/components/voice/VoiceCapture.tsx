@@ -57,64 +57,73 @@ export function VoiceCapture() {
   }
 
   return (
-    <Box sx={{ display: "flex", alignItems: "center", gap: 2, width: "100%" }}>
-      {/* Mic button */}
+    <Box sx={{ 
+      display: "flex", 
+      flexDirection: "column", 
+      alignItems: "center", 
+      gap: 3, 
+      width: "100%",
+      py: 2
+    }}>
+      {/* Massive Hero Mic Button */}
       <IconButton
         onClick={handleMicToggle}
         sx={{
-          width: 56,
-          height: 56,
-          borderRadius: "16px", // M3 FAB/Large Component radius
-          backgroundColor: isListening
-            ? alpha(theme.palette.error.main, 0.1)
-            : alpha(theme.palette.primary.main, 0.1),
-          color: isListening ? "error.main" : "primary.main",
-          border: "1px solid",
-          borderColor: isListening ? alpha(theme.palette.error.main, 0.3) : alpha(theme.palette.primary.main, 0.3),
-          transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+          width: 96, // Massive button
+          height: 96,
+          borderRadius: "28px", // M3 Extra Large button
+          backgroundColor: isListening ? "error.main" : "primary.main",
+          color: "white",
+          boxShadow: isListening 
+            ? `0 0 30px ${alpha(theme.palette.error.main, 0.6)}` 
+            : `0 8px 16px ${alpha(theme.palette.primary.main, 0.3)}`,
+          transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
           flexShrink: 0,
+          "& .MuiSvgIcon-root": { fontSize: 44 }, // Huge icon
           "&:hover": {
-            backgroundColor: isListening
-              ? alpha(theme.palette.error.main, 0.2)
-              : alpha(theme.palette.primary.main, 0.2),
+            transform: "scale(1.05)",
+            backgroundColor: isListening ? "error.dark" : "primary.dark",
+          },
+          "&:active": {
+            transform: "scale(0.95)",
           },
           ...(isListening && {
-            animation: "micPulse 2s infinite",
+            animation: "micPulse 1.5s infinite ease-in-out",
             "@keyframes micPulse": {
-              "0%": { boxShadow: `0 0 0 0 ${alpha(theme.palette.error.main, 0.4)}` },
-              "100%": { boxShadow: `0 0 0 12px ${alpha(theme.palette.error.main, 0)}` },
+              "0%": { transform: "scale(1)", boxShadow: `0 0 0 0 ${alpha(theme.palette.error.main, 0.7)}` },
+              "70%": { transform: "scale(1.1)", boxShadow: `0 0 0 20px ${alpha(theme.palette.error.main, 0)}` },
+              "100%": { transform: "scale(1)", boxShadow: `0 0 0 0 ${alpha(theme.palette.error.main, 0)}` },
             },
           }),
         }}
       >
-        {isListening ? <MicOffIcon sx={{ fontSize: 24 }} /> : <MicIcon sx={{ fontSize: 24 }} />}
+        {isListening ? <MicOffIcon /> : <MicIcon />}
       </IconButton>
 
-      {/* Live transcript */}
-      {interimText && (
-        <Typography
-          variant="body2"
-          sx={{
-            color: "text.secondary",
-            fontStyle: "italic",
-            flex: 1,
-            minWidth: 0,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {interimText}
-        </Typography>
-      )}
-      {isListening && !interimText && (
-        <Typography
-          variant="body2"
-          sx={{ color: "text.secondary", fontStyle: "italic" }}
-        >
-          Listening...
-        </Typography>
-      )}
+      {/* Live transcript - Highly legible */}
+      <Box sx={{ minHeight: 48, textAlign: 'center', width: '100%', px: 2 }}>
+        {interimText && (
+          <Typography
+            variant="h6"
+            sx={{
+              color: "text.primary",
+              fontWeight: 700,
+              fontStyle: "italic",
+              lineHeight: 1.2,
+            }}
+          >
+            &quot;{interimText}&quot;
+          </Typography>
+        )}
+        {isListening && !interimText && (
+          <Typography
+            variant="h6"
+            sx={{ color: "error.main", fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.1em" }}
+          >
+            LISTENING...
+          </Typography>
+        )}
+      </Box>
     </Box>
   );
 }

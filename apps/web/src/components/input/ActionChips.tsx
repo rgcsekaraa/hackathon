@@ -32,30 +32,39 @@ export function ActionChips() {
   const theme = useTheme();
 
   return (
-    <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+    <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap", mb: 1 }}>
       {CHIPS.map((chip) => (
         <Chip
           key={chip.label}
-          label={chip.label}
+          label={chip.label.toUpperCase()} // Bold uppercase
           icon={chip.icon}
-          size="small"
+          size="medium" // Increased size
           onClick={() => sendUtterance(chip.command, "chip")}
           sx={{
             cursor: "pointer",
-            borderRadius: "12px", // M3 Chip Radius
-            fontSize: "0.8rem",
-            fontWeight: 600,
-            backgroundColor: alpha(theme.palette.action.hover, 0.4),
-            border: "1px solid",
-            borderColor: "divider",
-            transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-            "& .MuiChip-icon": { color: "text.secondary" },
-            "&:hover": {
-              backgroundColor: alpha(theme.palette.primary.main, 0.08),
-              borderColor: "primary.main",
+            height: 44, // Minimum mobile tap height
+            borderRadius: "12px",
+            fontSize: "0.85rem",
+            fontWeight: 800, // Extra bold
+            backgroundColor: theme.palette.mode === 'dark' ? alpha(theme.palette.primary.main, 0.15) : alpha(theme.palette.primary.main, 0.05),
+            border: "2px solid", // Bolder border
+            borderColor: alpha(theme.palette.primary.main, 0.2),
+            color: "text.primary",
+            px: 1,
+            transition: "all 0.1s ease-in-out",
+            "& .MuiChip-icon": { 
               color: "primary.main",
-              "& .MuiChip-icon": { color: "primary.main" },
+              fontSize: 20, // Larger icons
             },
+            "&:hover, &:active": {
+              backgroundColor: "primary.main",
+              borderColor: "primary.main",
+              color: "white",
+              "& .MuiChip-icon": { color: "white" },
+            },
+            "& .MuiChip-label": {
+              px: 1.5,
+            }
           }}
         />
       ))}

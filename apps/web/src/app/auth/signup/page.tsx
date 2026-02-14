@@ -89,11 +89,11 @@ export default function SignupPage() {
           >
             S
           </Box>
-          <Typography variant="h6" sx={{ fontWeight: 800, letterSpacing: "-0.02em" }}>
-            Create Account
+          <Typography variant="h4" sx={{ fontWeight: 800, mb: 1, letterSpacing: "-0.02em" }}>
+            Join Sophiie Orbit today
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Join sophiie-space today
+            Join Sophiie Orbit today
           </Typography>
         </Box>
 

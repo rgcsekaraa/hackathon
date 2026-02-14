@@ -6,24 +6,19 @@ import { AuthProvider } from "@/context/AuthContext";
 import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
 
 export const metadata: Metadata = {
-  title: "sophiie-space | Realtime AI Workspace",
-  description:
-    "Voice, text, and touch create and reshape a visual plan in real time. Built for trades professionals who need to plan jobs while moving.",
+  title: "Sophiie Orbit | Realtime AI Workspace",
+  description: "Advanced AI orchestration for trades business workflow.",
   manifest: "/manifest.json",
+  viewport: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0",
+  themeColor: "#6366f1",
+  openGraph: {
+    title: "Sophiie Orbit",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "sophiie-space",
+    title: "Sophiie Orbit",
   },
-};
-
-export const viewport: Viewport = {
-  themeColor: "#020617",
-  width: "device-width",
-  initialScale: 0.9,
-  maximumScale: 1,
-  userScalable: false,
-  viewportFit: "cover",
 };
 
 /**

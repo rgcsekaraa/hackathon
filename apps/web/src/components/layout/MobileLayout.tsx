@@ -44,21 +44,23 @@ export function MobileLayout({ children }: MobileLayoutProps) {
         color="inherit"
         elevation={0}
         sx={{
-          borderBottom: "1px solid",
-          borderColor: "divider",
+          borderBottom: "2.5px solid", // Bolder border
+          borderColor: "primary.main", // High contrast border
+          backgroundColor: theme => theme.palette.mode === 'dark' ? '#0f172a' : '#ffffff',
         }}
       >
-        <Toolbar sx={{ minHeight: 64, px: 2 }}>
+        <Toolbar sx={{ minHeight: 72, px: 3 }}> {/* Taller AppBar */}
           <Typography
-            variant="h6"
+            variant="h5" // Larger title
             sx={{
-              fontWeight: 700,
+              fontWeight: 900, // Extra bold
               flexGrow: 1,
               color: "text.primary",
-              letterSpacing: "-0.01em",
+              letterSpacing: "-0.03em",
+              textTransform: "uppercase",
             }}
           >
-            Spatial Voice
+            Sophiie
           </Typography>
           <ThemeToggle />
         </Toolbar>
@@ -79,29 +81,53 @@ export function MobileLayout({ children }: MobileLayoutProps) {
 
       {/* M3 Bottom Navigation */}
       <Paper 
-        sx={{ position: "fixed", bottom: 0, left: 0, right: 0, borderRadius: 0, zIndex: 1000 }} 
-        elevation={3}
+        sx={{ 
+          position: "fixed", 
+          bottom: 0, 
+          left: 0, 
+          right: 0, 
+          borderRadius: 0, 
+          zIndex: 1000,
+          boxShadow: "0 -4px 20px rgba(0,0,0,0.15)" // Stronger shadow
+        }} 
+        elevation={0}
       >
         <BottomNavigation
           showLabels
           value={navValue}
           onChange={(event, newValue) => setNavValue(newValue)}
           sx={{
-            height: 80,
+            height: 90, // Taller for better tap targets
             borderTop: "1px solid",
             borderColor: "divider",
             backgroundColor: "background.paper",
             "& .MuiBottomNavigationAction-root": {
               color: "text.secondary",
+              minWidth: 0,
+              padding: "12px 0",
               "&.Mui-selected": {
                 color: "primary.main",
+                "& .MuiBottomNavigationAction-label": {
+                  fontSize: "0.85rem",
+                  fontWeight: 900, // Extra bold labels
+                },
+                "& .MuiSvgIcon-root": {
+                  fontSize: "1.8rem", // Larger icons
+                }
               },
+              "& .MuiBottomNavigationAction-label": {
+                fontSize: "0.75rem",
+                fontWeight: 700,
+              },
+              "& .MuiSvgIcon-root": {
+                fontSize: "1.6rem",
+              }
             },
           }}
         >
-          <BottomNavigationAction label="Inbox" icon={<InboxIcon />} />
-          <BottomNavigationAction label="Projects" icon={<FolderIcon />} />
-          <BottomNavigationAction label="Settings" icon={<SettingsIcon />} />
+          <BottomNavigationAction label="INBOX" icon={<InboxIcon />} />
+          <BottomNavigationAction label="PROJECTS" icon={<FolderIcon />} />
+          <BottomNavigationAction label="SETTINGS" icon={<SettingsIcon />} />
         </BottomNavigation>
       </Paper>
     </Box>
