@@ -44,6 +44,34 @@ class Settings(BaseSettings):
     # In dev, this might be http://localhost:8001/auth/google/callback
     google_redirect_uri: str = "http://localhost:8001/auth/google/callback"
 
+    # Google Cloud Vision (image analysis)
+    google_cloud_vision_key: str = ""
+
+    # Google Maps / Distance Matrix
+    google_maps_api_key: str = ""
+
+    # Twilio (SMS)
+    twilio_account_sid: str = ""
+    twilio_auth_token: str = ""
+    twilio_phone_number: str = ""
+
+    # Deepgram (Speech-to-Text)
+    deepgram_api_key: str = ""
+
+    # ElevenLabs (Text-to-Speech)
+    elevenlabs_api_key: str = ""
+    elevenlabs_voice_id: str = "pNInz6obpgDQGcFmaJgB"  # "Adam" default
+
+    # LiveKit (Real-time voice rooms)
+    livekit_api_key: str = ""
+    livekit_api_secret: str = ""
+    livekit_url: str = "ws://localhost:7880"
+
+    # Default pricing (fallback if tradie hasn't configured)
+    default_callout_fee: float = 80.0
+    default_hourly_rate: float = 95.0
+    default_markup_pct: float = 15.0
+
     model_config = {
         "env_file": ".env",
         "env_file_encoding": "utf-8",
