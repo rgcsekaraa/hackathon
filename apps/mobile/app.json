@@ -37,8 +37,7 @@
     },
     "plugins": [
       "expo-router",
-      "@react-native-voice/voice",
-      "@livekit/react-native"
+      "@react-native-voice/voice"
     ]
   }
 }
