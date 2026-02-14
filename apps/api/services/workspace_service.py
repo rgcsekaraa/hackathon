@@ -1,66 +1,65 @@
-"""
-Workspace service -- converts AI intents into deterministic workspace operations.
-
-This is the core reliability mechanism: the LLM outputs natural language targets
-(like "Henderson") and this service resolves them to actual component IDs using
-fuzzy matching against the current workspace state. No hallucinated IDs.
-"""
-
 import logging
 import uuid
 from datetime import datetime, timezone
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, update, delete
+
+from models.workspace import WorkspaceComponent
 
 logger = logging.getLogger(__name__)
 
-
-def apply_intents_to_workspace(intents: list[dict], workspace: dict) -> list[dict]:
+async def apply_intents_to_workspace(intents: list[dict], db: AsyncSession, user_id: str) -> list[dict]:
     """
-    Take a list of AI-generated intents and apply them to the workspace.
-
-    Returns a list of patch operations that were applied. These get broadcast
-    to all clients so they can update their local state.
+    Take a list of AI-generated intents and apply them to the user's workspace in the DB.
+    Returns a list of patch operations for broadcasting.
     """
     operations = []
+
+    # Fetch existing tasks for resolution (simple for now)
+    result = await db.execute(
+        select(WorkspaceComponent)
+        .where(WorkspaceComponent.user_id == user_id)
+        .order_by(WorkspaceComponent.order_index)
+    )
+    existing_tasks = result.scalars().all()
 
     for intent in intents:
         intent_type = intent.get("type")
 
         if intent_type == "create_plan":
-            ops = _handle_create_plan(intent, workspace)
-            operations.extend(ops)
+            items = intent.get("items", [])
+            for item in items:
+                comp = await _handle_create_task(item, db, user_id)
+                if comp:
+                    operations.append({"op": "add", "component": _model_to_dict(comp)})
 
         elif intent_type == "create_task":
-            op = _handle_create_task(intent, workspace)
-            if op:
-                operations.append(op)
-
-        elif intent_type == "create_note":
-            op = _handle_create_note(intent, workspace)
-            if op:
-                operations.append(op)
+            comp = await _handle_create_task(intent, db, user_id)
+            if comp:
+                operations.append({"op": "add", "component": _model_to_dict(comp)})
 
         elif intent_type == "set_priority":
-            op = _handle_set_priority(intent, workspace)
+            op = await _handle_set_priority(intent, db, user_id, existing_tasks)
             if op:
                 operations.append(op)
 
         elif intent_type == "move_item":
-            op = _handle_move_item(intent, workspace)
+            op = await _handle_move_item(intent, db, user_id, existing_tasks)
             if op:
                 operations.append(op)
 
         elif intent_type == "delete_item":
-            op = _handle_delete_item(intent, workspace)
+            op = await _handle_delete_item(intent, db, user_id, existing_tasks)
             if op:
                 operations.append(op)
 
         elif intent_type == "update_item":
-            op = _handle_update_item(intent, workspace)
+            op = await _handle_update_item(intent, db, user_id, existing_tasks)
             if op:
                 operations.append(op)
 
         elif intent_type == "mark_complete":
-            op = _handle_mark_complete(intent, workspace)
+            op = await _handle_mark_complete(intent, db, user_id, existing_tasks)
             if op:
                 operations.append(op)
 
@@ -70,239 +69,118 @@ def apply_intents_to_workspace(intents: list[dict], workspace: dict) -> list[dic
     return operations
 
 
-def _make_component(
-    comp_type: str,
-    title: str,
-    description: str = "",
-    date: str | None = None,
-    time_slot: str | None = None,
-    priority: str = "normal",
-) -> dict:
-    """Build a new workspace component with generated ID and timestamps."""
-    now = datetime.now(timezone.utc).isoformat()
-    return {
-        "id": str(uuid.uuid4())[:8],
-        "type": comp_type,
-        "title": title,
-        "description": description,
-        "priority": priority,
-        "date": date,
-        "timeSlot": time_slot,
-        "completed": False,
-        "createdAt": now,
-        "updatedAt": now,
-    }
-
-
-def _resolve_target(target: str, workspace: dict) -> str | None:
-    """
-    Find a component ID by matching the target string against component titles.
-
-    Uses case-insensitive substring matching. Returns the best match,
-    or None if nothing matches.
-    """
-    target_lower = target.lower().strip()
-    components = workspace.get("components", {})
-    order = workspace.get("order", [])
-
-    # Check entity cache first for fast lookups
-    last_entities = workspace.get("meta", {}).get("lastEntities", {})
-    if target_lower in last_entities:
-        cached_id = last_entities[target_lower]
-        if cached_id in components:
-            return cached_id
-
-    # Fuzzy match against titles
-    best_match = None
-    best_score = 0
-
-    for cid in order:
-        comp = components.get(cid)
-        if not comp:
-            continue
-
-        title_lower = comp.get("title", "").lower()
-
-        # Exact match wins immediately
-        if title_lower == target_lower:
-            return cid
-
-        # Substring match with length-based scoring
-        if target_lower in title_lower or title_lower in target_lower:
-            score = len(target_lower) / max(len(title_lower), 1)
-            if score > best_score:
-                best_score = score
-                best_match = cid
-
-    if best_match:
-        # Cache this resolution for faster lookups on follow-up commands
-        if "meta" not in workspace:
-            workspace["meta"] = {"activeId": None, "lastEntities": {}, "sessionId": "default"}
-        workspace["meta"]["lastEntities"][target_lower] = best_match
-
-    return best_match
-
-
-# -- Intent handlers --
-
-def _handle_create_plan(intent: dict, workspace: dict) -> list[dict]:
-    """Create multiple items from a plan intent."""
-    items = intent.get("items", [])
-    operations = []
-
-    for item in items:
-        comp = _make_component(
-            comp_type="task",
-            title=item.get("title", "Untitled"),
-            description=item.get("description", ""),
-            date=item.get("date"),
-            time_slot=item.get("timeSlot"),
-            priority=item.get("priority", "normal"),
-        )
-
-        # Apply to workspace state
-        workspace["components"][comp["id"]] = comp
-        workspace["order"].append(comp["id"])
-
-        operations.append({"op": "add", "component": comp, "index": len(workspace["order"]) - 1})
-
-    return operations
-
-
-def _handle_create_task(intent: dict, workspace: dict) -> dict | None:
-    """Create a single task."""
-    comp = _make_component(
-        comp_type="task",
-        title=intent.get("title", "Untitled"),
-        description=intent.get("description", ""),
-        date=intent.get("date"),
-        time_slot=intent.get("timeSlot"),
-        priority=intent.get("priority", "normal"),
+async def _handle_create_task(data: dict, db: AsyncSession, user_id: str) -> WorkspaceComponent:
+    """Create a new task in the database."""
+    # Get max order index
+    result = await db.execute(select(WorkspaceComponent.order_index).where(WorkspaceComponent.user_id == user_id).order_by(WorkspaceComponent.order_index.desc()).limit(1))
+    max_idx = result.scalar() or -1
+    
+    comp = WorkspaceComponent(
+        id=str(uuid.uuid4())[:8],
+        user_id=user_id,
+        title=data.get("title", "Untitled"),
+        description=data.get("description", ""),
+        priority=data.get("priority", "normal"),
+        date=data.get("date"),
+        time_slot=data.get("timeSlot"),
+        order_index=max_idx + 1
     )
-
-    workspace["components"][comp["id"]] = comp
-    workspace["order"].append(comp["id"])
-
-    return {"op": "add", "component": comp, "index": len(workspace["order"]) - 1}
+    db.add(comp)
+    await db.flush()
+    return comp
 
 
-def _handle_create_note(intent: dict, workspace: dict) -> dict | None:
-    """Create a note component."""
-    comp = _make_component(
-        comp_type="note",
-        title=intent.get("title", "Note"),
-        description=intent.get("description", ""),
-    )
-
-    workspace["components"][comp["id"]] = comp
-    workspace["order"].append(comp["id"])
-
-    return {"op": "add", "component": comp, "index": len(workspace["order"]) - 1}
-
-
-def _handle_set_priority(intent: dict, workspace: dict) -> dict | None:
-    """Change the priority of an existing item."""
+async def _handle_set_priority(intent: dict, db: AsyncSession, user_id: str, tasks: list[WorkspaceComponent]) -> dict | None:
     target = intent.get("target", "")
-    cid = _resolve_target(target, workspace)
+    comp = _resolve_target(target, tasks)
+    if not comp: return None
 
-    if not cid:
-        logger.warning("Could not resolve target '%s' for set_priority", target)
-        return None
-
-    new_priority = intent.get("priority", "normal")
-    workspace["components"][cid]["priority"] = new_priority
-    workspace["components"][cid]["updatedAt"] = datetime.now(timezone.utc).isoformat()
-
-    return {"op": "update", "componentId": cid, "changes": {"priority": new_priority}}
+    priority = intent.get("priority", "normal")
+    comp.priority = priority
+    return {"op": "update", "componentId": comp.id, "changes": {"priority": priority}}
 
 
-def _handle_move_item(intent: dict, workspace: dict) -> dict | None:
-    """Move an item to a new position or time slot."""
+async def _handle_mark_complete(intent: dict, db: AsyncSession, user_id: str, tasks: list[WorkspaceComponent]) -> dict | None:
     target = intent.get("target", "")
-    cid = _resolve_target(target, workspace)
+    comp = _resolve_target(target, tasks)
+    if not comp: return None
 
-    if not cid:
-        logger.warning("Could not resolve target '%s' for move_item", target)
-        return None
+    completed = intent.get("completed", True)
+    comp.completed = completed
+    return {"op": "update", "componentId": comp.id, "changes": {"completed": completed}}
 
-    position = intent.get("position")
-    order = workspace["order"]
 
-    if cid in order:
-        order.remove(cid)
+async def _handle_delete_item(intent: dict, db: AsyncSession, user_id: str, tasks: list[WorkspaceComponent]) -> dict | None:
+    target = intent.get("target", "")
+    comp = _resolve_target(target, tasks)
+    if not comp: return None
 
-    if position == "first":
-        new_index = 0
-    elif position == "last":
-        new_index = len(order)
-    elif isinstance(position, int):
-        new_index = min(position, len(order))
-    else:
-        new_index = 0
+    await db.delete(comp)
+    return {"op": "remove", "componentId": comp.id}
 
-    order.insert(new_index, cid)
 
-    # Also update date/time if provided
+async def _handle_move_item(intent: dict, db: AsyncSession, user_id: str, tasks: list[WorkspaceComponent]) -> dict | None:
+    target = intent.get("target", "")
+    comp = _resolve_target(target, tasks)
+    if not comp: return None
+
+    # For now, just update time/date if provided. Reordering is complex via AI.
     changes = {}
     if intent.get("date"):
-        workspace["components"][cid]["date"] = intent["date"]
+        comp.date = intent["date"]
         changes["date"] = intent["date"]
     if intent.get("timeSlot"):
-        workspace["components"][cid]["timeSlot"] = intent["timeSlot"]
+        comp.time_slot = intent["timeSlot"]
         changes["timeSlot"] = intent["timeSlot"]
-
-    workspace["components"][cid]["updatedAt"] = datetime.now(timezone.utc).isoformat()
-
-    return {"op": "reorder", "componentId": cid, "newIndex": new_index}
+    
+    return {"op": "update", "componentId": comp.id, "changes": changes}
 
 
-def _handle_delete_item(intent: dict, workspace: dict) -> dict | None:
-    """Remove an item from the workspace."""
+async def _handle_update_item(intent: dict, db: AsyncSession, user_id: str, tasks: list[WorkspaceComponent]) -> dict | None:
     target = intent.get("target", "")
-    cid = _resolve_target(target, workspace)
-
-    if not cid:
-        logger.warning("Could not resolve target '%s' for delete_item", target)
-        return None
-
-    workspace["components"].pop(cid, None)
-    if cid in workspace["order"]:
-        workspace["order"].remove(cid)
-
-    return {"op": "remove", "componentId": cid}
-
-
-def _handle_update_item(intent: dict, workspace: dict) -> dict | None:
-    """Update specific fields of an existing item."""
-    target = intent.get("target", "")
-    cid = _resolve_target(target, workspace)
-
-    if not cid:
-        logger.warning("Could not resolve target '%s' for update_item", target)
-        return None
+    comp = _resolve_target(target, tasks)
+    if not comp: return None
 
     changes = {}
     for field in ("title", "description", "date", "timeSlot"):
         if field in intent and intent[field] is not None:
-            workspace["components"][cid][field] = intent[field]
+            # Map camelCase to snake_case for the model
+            model_field = "time_slot" if field == "timeSlot" else field
+            setattr(comp, model_field, intent[field])
             changes[field] = intent[field]
 
-    workspace["components"][cid]["updatedAt"] = datetime.now(timezone.utc).isoformat()
-
-    return {"op": "update", "componentId": cid, "changes": changes}
+    return {"op": "update", "componentId": comp.id, "changes": changes}
 
 
-def _handle_mark_complete(intent: dict, workspace: dict) -> dict | None:
-    """Toggle the completion status of an item."""
-    target = intent.get("target", "")
-    cid = _resolve_target(target, workspace)
+def _resolve_target(target: str, tasks: list[WorkspaceComponent]) -> WorkspaceComponent | None:
+    target_lower = target.lower().strip()
+    best_match = None
+    best_score = 0
 
-    if not cid:
-        logger.warning("Could not resolve target '%s' for mark_complete", target)
-        return None
+    for comp in tasks:
+        title_lower = comp.title.lower()
+        if title_lower == target_lower:
+            return comp
+        if target_lower in title_lower or title_lower in target_lower:
+            score = len(target_lower) / max(len(title_lower), 1)
+            if score > best_score:
+                best_score = score
+                best_match = comp
+    
+    return best_match
 
-    completed = intent.get("completed", True)
-    workspace["components"][cid]["completed"] = completed
-    workspace["components"][cid]["updatedAt"] = datetime.now(timezone.utc).isoformat()
 
-    return {"op": "update", "componentId": cid, "changes": {"completed": completed}}
+def _model_to_dict(comp: WorkspaceComponent) -> dict:
+    """Convert a WorkspaceComponent model to the JSON format expected by the frontend."""
+    return {
+        "id": comp.id,
+        "type": "task",
+        "title": comp.title,
+        "description": comp.description,
+        "priority": comp.priority,
+        "date": comp.date,
+        "timeSlot": comp.time_slot,
+        "completed": comp.completed,
+        "createdAt": comp.created_at.isoformat(),
+        "updatedAt": comp.updated_at.isoformat(),
+    }

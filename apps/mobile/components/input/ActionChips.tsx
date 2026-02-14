@@ -2,7 +2,7 @@ import { View, Text, StyleSheet, Pressable, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
-import { useColors, typography } from "../../lib/theme";
+import { useColors, typography, SHAPE } from "../../lib/theme";
 import { useWorkspace } from "../../lib/workspace-provider";
 
 interface ChipConfig {
@@ -20,7 +20,7 @@ const CHIPS: ChipConfig[] = [
 
 /**
  * Quick action chips for common workspace commands.
- * Horizontal scrollable row with haptic feedback.
+ * Refined for a professional look with minimal borders and subtle interactions.
  */
 export function ActionChips() {
   const colors = useColors();
@@ -44,13 +44,18 @@ export function ActionChips() {
           style={({ pressed }) => [
             styles.chip,
             {
-              backgroundColor: pressed ? colors.surfaceHover : colors.surface,
-              borderColor: colors.border,
+              backgroundColor: pressed ? `${colors.primary}10` : colors.surface,
+              borderColor: pressed ? colors.primary : colors.border,
             },
           ]}
         >
-          <Ionicons name={chip.icon} size={14} color={colors.textSecondary} />
-          <Text style={[typography.caption, { color: colors.text, fontWeight: "500" }]}>
+          <Ionicons 
+            name={chip.icon} 
+            size={14} 
+            color={colors.textSecondary} 
+            style={{ marginRight: 4 }}
+          />
+          <Text style={[typography.caption, { color: colors.text, fontWeight: "700" }]}>
             {chip.label}
           </Text>
         </Pressable>
@@ -62,15 +67,15 @@ export function ActionChips() {
 const styles = StyleSheet.create({
   scrollContent: {
     gap: 8,
+    paddingHorizontal: 2,
     paddingVertical: 4,
   },
   chip: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 8,
+    borderRadius: SHAPE.borderRadius,
     borderWidth: 1,
   },
 });
