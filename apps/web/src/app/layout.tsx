@@ -6,18 +6,18 @@ import { AuthProvider } from "@/context/AuthContext";
 import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
 
 export const metadata: Metadata = {
-  title: "Sophiie Orbit | Realtime AI Workspace",
+  title: "Sophiie Space | Realtime AI Workspace",
   description: "Advanced AI orchestration for trades business workflow.",
   manifest: "/manifest.json",
   viewport: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0",
   themeColor: "#6366f1",
   openGraph: {
-    title: "Sophiie Orbit",
+    title: "Sophiie Space",
   },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Sophiie Orbit",
+    title: "Sophiie Space",
   },
 };
 
