@@ -77,7 +77,7 @@ Jinja2==3.1.2
 MarkupSafe==3.0.2
 PyYAML==6.0.2
 six==1.17.0
-packaging==26.0
+packaging==24.2
 tenacity==9.1.4
 regex==2026.1.15
 jsonpatch==1.33
