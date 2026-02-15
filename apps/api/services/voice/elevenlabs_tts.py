@@ -14,6 +14,7 @@ from typing import Optional
 import httpx
 
 from core.config import settings
+from core.retry import retry_async
 
 logger = logging.getLogger(__name__)
 
@@ -94,26 +95,28 @@ async def generate_speech(
     }
     params = {"output_format": output_format}
 
-    try:
+    async def _do_tts() -> bytes:
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(url, json=payload, headers=headers, params=params)
             response.raise_for_status()
+            return response.content
 
-        audio_bytes = response.content
+    try:
+        audio_bytes = await retry_async(
+            _do_tts,
+            max_attempts=3,
+            base_delay=0.3,
+            max_delay=3.0,
+            retryable_exceptions=(httpx.HTTPStatusError, httpx.ConnectError, httpx.ReadTimeout),
+        )
         logger.info(
             "ElevenLabs TTS [AU]: %d chars → %d bytes (voice: %s, phone: %s)",
             len(text), len(audio_bytes), vid, phone_mode,
         )
         return audio_bytes
 
-    except httpx.HTTPStatusError as exc:
-        logger.error(
-            "ElevenLabs HTTP error %d: %s",
-            exc.response.status_code, exc.response.text[:200],
-        )
-        return None
     except Exception as exc:
-        logger.error("ElevenLabs TTS failed: %s", exc)
+        logger.error("ElevenLabs TTS failed after retries: %s", exc)
         return None
 
 

@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 import httpx
 from core.config import settings
+from core.retry import retry_async
 
 logger = logging.getLogger(__name__)
 
@@ -39,8 +40,8 @@ async def calculate_distance(origin: str, destination: str) -> DistanceResult:
         logger.info("No Maps API key -- returning mock distance")
         return _mock_distance(origin, destination)
 
-    try:
-        async with httpx.AsyncClient() as client:
+    async def _do_distance_request() -> dict:
+        async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.get(
                 "https://maps.googleapis.com/maps/api/distancematrix/json",
                 params={
@@ -49,10 +50,18 @@ async def calculate_distance(origin: str, destination: str) -> DistanceResult:
                     "key": settings.google_maps_api_key,
                     "units": "metric",
                 },
-                timeout=10.0,
             )
             resp.raise_for_status()
-            data = resp.json()
+            return resp.json()
+
+    try:
+        data = await retry_async(
+            _do_distance_request,
+            max_attempts=2,
+            base_delay=0.5,
+            max_delay=3.0,
+            retryable_exceptions=(httpx.HTTPStatusError, httpx.ConnectError, httpx.ReadTimeout),
+        )
 
         element = data["rows"][0]["elements"][0]
         if element["status"] != "OK":
@@ -70,7 +79,7 @@ async def calculate_distance(origin: str, destination: str) -> DistanceResult:
         )
 
     except Exception as e:
-        logger.error("Distance Matrix error: %s -- falling back to mock", e)
+        logger.error("Distance Matrix error after retries: %s -- falling back to mock", e)
         return _mock_distance(origin, destination)
 
 

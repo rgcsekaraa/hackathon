@@ -14,6 +14,7 @@ from datetime import datetime, timedelta, timezone
 import httpx
 
 from core.config import settings
+from core.retry import retry_async
 from services.cache_service import get_cached_intents, cache_intents
 
 logger = logging.getLogger(__name__)
@@ -84,7 +85,7 @@ async def _llm_parse(text: str, workspace: dict) -> list[dict]:
     if workspace_context:
         user_message = f"Current workspace items:\n{workspace_context}\n\nUser says: {text}"
 
-    try:
+    async def _do_llm_call() -> dict:
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
                 f"{settings.openrouter_base_url}/chat/completions",
@@ -103,7 +104,16 @@ async def _llm_parse(text: str, workspace: dict) -> list[dict]:
                 },
             )
             response.raise_for_status()
-            data = response.json()
+            return response.json()
+
+    try:
+        data = await retry_async(
+            _do_llm_call,
+            max_attempts=3,
+            base_delay=0.5,
+            max_delay=5.0,
+            retryable_exceptions=(httpx.HTTPStatusError, httpx.ConnectError, httpx.ReadTimeout),
+        )
 
         content = data["choices"][0]["message"]["content"]
         intents = json.loads(content)
@@ -115,7 +125,7 @@ async def _llm_parse(text: str, workspace: dict) -> list[dict]:
         return intents
 
     except Exception as exc:
-        logger.error("LLM call failed: %s -- falling back to deterministic parser", exc)
+        logger.error("LLM call failed after retries: %s -- falling back to deterministic parser", exc)
         return _deterministic_parse(text)
 
 

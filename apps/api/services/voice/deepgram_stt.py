@@ -12,6 +12,7 @@ from typing import Optional
 import httpx
 
 from core.config import settings
+from core.retry import retry_async
 
 logger = logging.getLogger(__name__)
 
@@ -110,15 +111,23 @@ async def transcribe_audio(
         "Content-Type": mime_type,
     }
 
-    try:
+    async def _do_request() -> dict:
         async with httpx.AsyncClient(timeout=30.0) as client:
-            # Append keywords to URL since httpx doesn't handle repeated params well
             full_url = f"{url}?{keywords}" if keywords else url
             response = await client.post(
                 full_url, params=params, headers=headers, content=audio_bytes,
             )
             response.raise_for_status()
-            data = response.json()
+            return response.json()
+
+    try:
+        data = await retry_async(
+            _do_request,
+            max_attempts=3,
+            base_delay=0.3,
+            max_delay=3.0,
+            retryable_exceptions=(httpx.HTTPStatusError, httpx.ConnectError, httpx.ReadTimeout),
+        )
 
         result = data.get("results", {})
         channels = result.get("channels", [{}])
@@ -155,11 +164,8 @@ async def transcribe_audio(
             "utterances": result.get("utterances", []),
         }
 
-    except httpx.HTTPStatusError as exc:
-        logger.error("Deepgram HTTP error %d: %s", exc.response.status_code, exc.response.text[:200])
-        return _empty_result(error=str(exc))
     except Exception as exc:
-        logger.error("Deepgram transcription failed: %s", exc)
+        logger.error("Deepgram transcription failed after retries: %s", exc)
         return _empty_result(error=str(exc))
 
 
@@ -191,7 +197,7 @@ async def transcribe_url(audio_url: str, language: str = "en-AU") -> dict:
         "Content-Type": "application/json",
     }
 
-    try:
+    async def _do_url_request() -> dict:
         async with httpx.AsyncClient(timeout=30.0) as client:
             full_url = f"{url}?{keywords}" if keywords else url
             response = await client.post(
@@ -199,7 +205,16 @@ async def transcribe_url(audio_url: str, language: str = "en-AU") -> dict:
                 json={"url": audio_url},
             )
             response.raise_for_status()
-            data = response.json()
+            return response.json()
+
+    try:
+        data = await retry_async(
+            _do_url_request,
+            max_attempts=3,
+            base_delay=0.3,
+            max_delay=3.0,
+            retryable_exceptions=(httpx.HTTPStatusError, httpx.ConnectError, httpx.ReadTimeout),
+        )
 
         channels = data.get("results", {}).get("channels", [{}])
         if not channels:
@@ -214,7 +229,7 @@ async def transcribe_url(audio_url: str, language: str = "en-AU") -> dict:
         }
 
     except Exception as exc:
-        logger.error("Deepgram URL transcription failed: %s", exc)
+        logger.error("Deepgram URL transcription failed after retries: %s", exc)
         return _empty_result(error=str(exc))
 
 

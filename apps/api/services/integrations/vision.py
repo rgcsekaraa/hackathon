@@ -10,6 +10,7 @@ import logging
 import httpx
 from schemas.lead import PhotoAnalysis
 from core.config import settings
+from core.retry import retry_async
 
 logger = logging.getLogger(__name__)
 
@@ -72,14 +73,22 @@ async def analyse_image(image_url: str | None = None, image_bytes: bytes | None 
             }]
         }
 
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(
-                f"https://vision.googleapis.com/v1/images:annotate?key={settings.google_cloud_vision_key}",
-                json=payload,
-                timeout=15.0,
-            )
-            resp.raise_for_status()
-            data = resp.json()
+        async def _do_vision_request() -> dict:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                resp = await client.post(
+                    f"https://vision.googleapis.com/v1/images:annotate?key={settings.google_cloud_vision_key}",
+                    json=payload,
+                )
+                resp.raise_for_status()
+                return resp.json()
+
+        data = await retry_async(
+            _do_vision_request,
+            max_attempts=2,
+            base_delay=0.5,
+            max_delay=3.0,
+            retryable_exceptions=(httpx.HTTPStatusError, httpx.ConnectError, httpx.ReadTimeout),
+        )
 
         response = data.get("responses", [{}])[0]
         labels = [a["description"] for a in response.get("labelAnnotations", [])]
