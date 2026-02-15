@@ -16,7 +16,9 @@
     "build:customer": "NX_DAEMON=false NODE_OPTIONS='--max-old-space-size=4096' GENERATE_SOURCEMAP=false pnpm exec nx build customer",
     "build:admin": "NX_DAEMON=false NODE_OPTIONS='--max-old-space-size=4096' GENERATE_SOURCEMAP=false pnpm exec nx build admin",
     "lint": "pnpm exec nx run-many --target=lint",
-    "typecheck": "pnpm exec nx run-many --target=typecheck"
+    "typecheck": "pnpm exec nx run-many --target=typecheck",
+    "worker:tradie": "cd apps/api && set -a && source .env && set +a && PYTHONPATH=. python services/voice/tradie_worker.py dev",
+    "worker:customer": "cd apps/api && set -a && source .env && set +a && PYTHONPATH=. python services/voice/customer_worker.py dev"
   },
   "engines": {
     "node": ">=20.0.0"
