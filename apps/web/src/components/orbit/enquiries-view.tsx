@@ -18,6 +18,7 @@ import ExpandLess from "@mui/icons-material/ExpandLess";
 import { FiberManualRecord } from "@mui/icons-material";
 import { useWorkspace } from "@/components/providers/WorkspaceProvider";
 import { type Enquiry } from "@/lib/mock-data";
+import { OrbitLoader } from "@/lib/orbit-ui";
 
 type FilterTab = "all" | "new" | "pending" | "responded" | "closed";
 
@@ -165,7 +166,7 @@ function EnquiryItem({ item }: { item: Enquiry }) {
 export default function EnquiriesView() {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
-  const { leads } = useWorkspace();
+  const { leads, connectionStatus } = useWorkspace();
   const [tab, setTab] = useState<FilterTab>("all");
 
   const filtered = useMemo(() => {
@@ -180,6 +181,14 @@ export default function EnquiriesView() {
     });
     return c;
   }, [leads]);
+
+  if (connectionStatus === "connecting") {
+    return (
+      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", py: 12 }}>
+        <OrbitLoader />
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ pb: 2 }}>

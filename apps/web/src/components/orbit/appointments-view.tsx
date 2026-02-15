@@ -13,12 +13,13 @@ import { useWorkspace } from "@/components/providers/WorkspaceProvider";
 import { type Appointment } from "@/lib/mock-data";
 import { useMemo } from "react";
 import PersonOutline from "@mui/icons-material/PersonOutline";
+import { OrbitLoader } from "@/lib/orbit-ui";
 
 export default function AppointmentsView() {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const { user } = useAuth();
-  const { components } = useWorkspace();
+  const { components, connectionStatus } = useWorkspace();
   const now = new Date();
   const greeting =
     now.getHours() < 12 ? "Good morning" : now.getHours() < 17 ? "Good afternoon" : "Good evening";
@@ -58,6 +59,14 @@ export default function AppointmentsView() {
       border: isDark ? "rgba(242,139,130,0.4)" : "rgba(217,48,37,0.3)",
     },
   };
+
+  if (connectionStatus === "connecting") {
+    return (
+      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", py: 12 }}>
+        <OrbitLoader />
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ pb: 2 }}>

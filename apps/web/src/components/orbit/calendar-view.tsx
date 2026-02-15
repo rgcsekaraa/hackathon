@@ -12,6 +12,7 @@ import ChevronLeft from "@mui/icons-material/ChevronLeft";
 import ChevronRight from "@mui/icons-material/ChevronRight";
 import { useWorkspace } from "@/components/providers/WorkspaceProvider";
 import { type CalendarEvent } from "@/lib/mock-data";
+import { OrbitLoader } from "@/lib/orbit-ui";
 
 const DAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
@@ -26,7 +27,7 @@ function getFirstDayOfMonth(year: number, month: number) {
 export default function CalendarView() {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
-  const { components } = useWorkspace();
+  const { components, connectionStatus } = useWorkspace();
   const today = new Date();
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
@@ -79,6 +80,14 @@ export default function CalendarView() {
   const cells: (number | null)[] = [];
   for (let i = 0; i < firstDay; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+  if (connectionStatus === "connecting") {
+    return (
+      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", py: 12 }}>
+        <OrbitLoader />
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ pb: 2 }}>
