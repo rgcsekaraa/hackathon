@@ -26,59 +26,92 @@ Sophiie captures customer intent from voice and text, classifies and enriches le
 
 ## Architecture
 
-### Service Map
-
-| Service | Stack | Port | Description |
-|---------|-------|------|-------------|
-| **Sophiie Orbit** | Next.js 16, React 19, MUI 7 | `3000` | Customer/tradie portal — appointments, calendar, enquiries, voice assistant |
-| **Sophiie Space** | Next.js 16, React 19, MUI 7 | `3001` | Super-admin console — user management, onboarding, monitoring, inbound setup |
-| **API** | FastAPI, SQLAlchemy, aiosqlite | `8000` | Backend — auth, voice pipeline, lead orchestration, integrations, WebSocket |
-| **Tradie Worker** | Python (LiveKit Agents 1.4) | — | Voice assistant for tradies — jobs, SMS, SDUI, outbound calls |
-| **Customer Worker** | Python (LiveKit Agents 1.4) | — | Virtual receptionist for inbound customer calls — lead capture, area check |
-
----
-
 ## Data Flow
 
+### System Architecture
+This diagram outlines how the Sophiie API orchestrates various services and AI providers to keep the Orbit and Space portals synced in real-time.
+
 ```mermaid
-flowchart LR
-    subgraph Customer
-        A[Voice / Text / Photo] --> B[Twilio / WebSocket / API]
+graph TD
+    %% Users
+    Customer((Customer))
+    Tradie((Tradie))
+    Admin((Super Admin))
+
+    %% Frontends
+    Tradie -->|Uses| Orbit[Sophiie Orbit Dashboard]
+    Admin -->|Uses| Space[Sophiie Space Console]
+    
+    %% Ingress
+    Customer -->|Voice Call| Twilio[Twilio Telephony]
+    Customer -->|SMS/Photo| REST[FastAPI REST Layer]
+
+    subgraph "Sophiie API (The Brain)"
+        Twilio <-->|Media Stream| VS[Voice Streamer]
+        REST -->|Payload| LO[Lead Orchestrator]
+        
+        %% Pipeline
+        VS <-->|STT| DG[Deepgram]
+        VS <-->|LLM| LLM[OpenRouter / Claude]
+        VS <-->|TTS| EL[ElevenLabs]
+
+        %% Logic
+        LO -->|Price Logic| Pricing[Quote Engine]
+        Pricing -->|Radius/Travel| G[Google Maps/Vision]
+        
+        %% Database & Sync
+        LO -->|Persist| DB[(SQLite Database)]
+        LO -->|Broadcast| Conn[Connection Manager]
     end
 
-    subgraph Backend ["apps/api"]
-        B --> C[STT - Deepgram]
-        C --> D[Intent + Entity Extraction - LLM]
-        D --> E[Lead Orchestrator]
-        E --> F[Quote Engine]
-        E --> G[Profile Context]
-        F --> H[Persistence - SQLite]
-        E --> I[Realtime Sync - WebSocket]
-    end
-
-    subgraph Frontends
-        I --> J[Orbit Dashboard :3000]
-        I --> K[Space Console :3001]
-    end
-
-    subgraph Response
-        E --> L[TTS - ElevenLabs]
-        E --> M[SMS Follow-up - Twilio]
-    end
+    %% Realtime Push
+    Conn -->|WebSocket Patch| Orbit
+    Conn -->|WebSocket Patch| Space
 ```
 
-### End-to-End Scenario
+### End-to-End Sequence (Leaky Tap Scenario)
+This flow demonstrates the multimodal journey from a voice call to an automated booking.
 
-1. **Customer calls** or submits a request (voice, text, or photo upload).
-2. **Ingestion layer** receives the input via Twilio Media Streams, WebSocket, or REST API.
-3. **Speech-to-text** (Deepgram) transcribes voice input in real-time.
-4. **LLM pipeline** (LangChain + OpenRouter) classifies intent, extracts entities (service type, urgency, location), and assesses job priority.
-5. **Profile context** is resolved — business service types, rates, travel radius, working hours.
-6. **Quote engine** calculates proposed charges: callout fee + labour + materials + travel + markup.
-7. **Lead record** is persisted to the database with full context.
-8. **Realtime sync** pushes the new lead/enquiry to all connected dashboards via WebSocket.
-9. **Tradie reviews** the enquiry in Orbit, approves or edits the quote.
-10. **Customer receives** a follow-up SMS with booking confirmation or photo upload link.
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as Customer (Phone)
+    participant API as Sophiie API
+    participant AI as AI (STT/LLM/TTS)
+    participant G as Google (Vision/Maps)
+    participant T as Tradie (Orbit App)
+
+    Note over C, AI: Initial Engagement
+    C->>API: Calls Tradie Number
+    API<->>AI: "G'day! I can help. Can you send a photo of the tap?"
+    API->>C: Sends SMS with Upload Link (via Twilio)
+
+    Note over C, G: Multimodal Analysis
+    C->>API: Uploads photo of the leaky tap
+    API->>G: Identifies tap model & brand (Google Vision)
+    API->>API: Searches Bunnings for Part Price ($45.00)
+
+    Note over API, G: Logistics & Pricing
+    API->>G: Calculates travel distance (Google Maps)
+    API->>API: Total Quote = Callout + Labor + Part + Travel
+    
+    Note over API, T: Real-time Orchestration
+    API-->>T: WebSocket: Push "New Lead" with Photo & Instant Quote
+    T->>T: Orbit pulses red. Tradie reviews details.
+    T->>API: Clicks [Confirm & Book]
+
+    Note over API, C: Closing Flow
+    API->>AI: Trigger TTS response
+    AI->>C: "All set! I've booked you in for tomorrow. Total is $235."
+    API->>API: Updates Shared Calendar & Leads Table
+```
+
+### Simple Flow Explanation
+1.  **Smart Intake**: A customer calls. The AI receptionist answers, identifies the issue (e.g., a "leaky tap"), and sends an automated text message asking for a photo.
+2.  **Multimodal Analysis**: The customer uploads a photo. The system uses **Google Vision** to recognize the specific part and looks up the current price at local hardware stores.
+3.  **Automatic Pricing**: The backend calculates travel distance via **Google Maps** and combines the part price, labor rate, and call-out fee into a complete quote.
+4.  **Real-Time Dashboard**: The tradie sees the lead, the photo, and the price appear instantly on their dashboard. They can approve the pre-calculated quote with one click.
+5.  **Automated Booking**: Once approved, the AI tells the customer the price, confirms the time, and automatically updates the tradie's calendar.
 
 ---
 
