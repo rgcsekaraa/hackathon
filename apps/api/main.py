@@ -10,7 +10,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from core.config import settings
-from routers import health, session, auth, oauth, search, leads, profile, voice, ws_leads, admin
+from routers import health, session, auth, oauth, search, leads, profile, voice, ws_leads, admin, outbound
 from db.init_db import init_db
 from services.bootstrap_admin import ensure_bootstrap_admin
 
@@ -58,6 +58,7 @@ app.include_router(search.router, tags=["search"])
 app.include_router(leads.router, prefix="/api", tags=["leads"])
 app.include_router(profile.router, prefix="/api", tags=["profile"])
 app.include_router(voice.router, prefix="/api", tags=["voice"])
+app.include_router(outbound.router, prefix="/api", tags=["outbound"])
 app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
 app.include_router(ws_leads.router, tags=["realtime"])
 

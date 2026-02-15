@@ -44,7 +44,7 @@ Analyse the customer's message and extract:
 3. urgency: one of [emergency, today, tomorrow, this_week, flexible]
 4. description: a brief summary of the issue
 
-Respond in JSON only: {"job_type": "...", "address": "...", "urgency": "...", "description": "..."}
+Respond in JSON only: {{"job_type": "...", "address": "...", "urgency": "...", "description": "..."}}
 
 Customer message: "{text}"
 """

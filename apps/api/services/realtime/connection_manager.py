@@ -61,6 +61,10 @@ class ConnectionManager:
         for ws in dead_conns:
             self.disconnect(tradie_id, ws)
 
+    async def broadcast_to_tradie(self, tradie_id: str, event: dict) -> None:
+        """Backward-compatible alias for sending to one tradie."""
+        await self.send_to_tradie(tradie_id, event)
+
     async def broadcast_all(self, event: dict) -> None:
         """Broadcast an event to ALL connected tradies."""
         payload = json.dumps(event)

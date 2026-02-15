@@ -75,6 +75,8 @@ async def load_profile_context(
 
         context = {
             "user_profile_id": profile.id,
+            "user_id": profile.user_id,
+            "tradie_id": profile.user_id,
             "business_name": profile.business_name,
             "base_address": profile.base_address,
             "service_radius_km": profile.service_radius_km,
@@ -96,6 +98,7 @@ async def load_profile_context(
             # Timezone + Availability
             "timezone": profile.timezone or "Australia/Brisbane",
             "working_hours": profile.working_hours or _default_working_hours(),
+            "inbound_config": profile.inbound_config or {},
             "next_available_slots": next_slots,
             "next_available_date": next_slots[0]["date"] if next_slots else None,
             "next_available_time": next_slots[0]["time_slot"] if next_slots else None,
@@ -237,6 +240,8 @@ def _default_context() -> dict:
     """Fallback context when no profile exists."""
     return {
         "user_profile_id": None,
+        "user_id": None,
+        "tradie_id": None,
         "business_name": settings.default_business_name,
         "base_address": settings.default_base_address,
         "service_radius_km": 30,
@@ -251,6 +256,7 @@ def _default_context() -> dict:
             "pipe_burst", "gas_fitting", "general_plumbing",
         ],
         "working_hours": _default_working_hours(),
+        "inbound_config": {},
         "next_available_slots": [
             {"date": "today", "time_slot": "13:00-17:00", "display": "Today, 13:00-17:00", "is_today": True, "is_tomorrow": False},
         ],

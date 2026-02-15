@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, File, UploadFile, Form, Request, HTTPException, WebSocket, Depends
 from fastapi.responses import Response
 from pydantic import BaseModel
+from sqlalchemy import select
 
 from services.voice.deepgram_stt import transcribe_audio, transcribe_url
 from services.voice.elevenlabs_tts import generate_speech, list_voices
@@ -26,6 +27,7 @@ from services.profile_context import load_profile_context, get_profile_context_f
 from db.session import get_db_context
 from core.deps import get_current_user
 from models.user import User
+from models.lead import LeadSession, UserProfile, LeadStatus
 from services.voice.livekit_rooms import generate_participant_token
 
 from core.config import settings
@@ -55,6 +57,10 @@ class TranscribeResponse(BaseModel):
 class TTSRequest(BaseModel):
     text: str
     voice_id: str | None = None
+
+
+class VoiceTokenRequest(BaseModel):
+    mode: str = "tradie_copilot"  # tradie_copilot | receptionist
 
 
 # ---------------------------------------------------------------------------
@@ -116,6 +122,48 @@ async def _cache_lead(lead_id: str, lead_data: dict) -> None:
         await cache_lead(lead_id, lead_data)
     except Exception as exc:
         logger.warning("Failed to cache lead %s: %s", lead_id, exc)
+
+
+async def _persist_voice_lead(lead_data: dict) -> None:
+    """
+    Persist inbound voice lead so it appears in both customer/admin portals.
+    """
+    profile_id = lead_data.get("userProfileId")
+    if not profile_id:
+        logger.warning("Skipping lead persistence; no user profile id for lead %s", lead_data.get("id"))
+        return
+
+    async with get_db_context() as db:
+        profile_result = await db.execute(select(UserProfile).where(UserProfile.id == profile_id))
+        if not profile_result.scalar_one_or_none():
+            logger.warning("Skipping lead persistence; unknown profile id %s", profile_id)
+            return
+
+        existing = await db.execute(select(LeadSession).where(LeadSession.id == lead_data["id"]))
+        if existing.scalar_one_or_none():
+            return
+
+        lead = LeadSession(
+            id=lead_data["id"],
+            user_profile_id=profile_id,
+            status=LeadStatus.NEW.value,
+            customer_name=lead_data.get("customerName", ""),
+            customer_phone=lead_data.get("customerPhone", ""),
+            customer_address=lead_data.get("address", ""),
+            job_type=lead_data.get("jobType", ""),
+            job_description=lead_data.get("description", ""),
+            urgency=lead_data.get("urgency", "flexible"),
+            quote_total=lead_data.get("quoteTotal"),
+            conversation=[
+                {
+                    "role": "customer",
+                    "text": lead_data.get("transcript", ""),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                }
+            ],
+        )
+        db.add(lead)
+        await db.commit()
 
 
 # ---------------------------------------------------------------------------
@@ -370,6 +418,7 @@ async def voice_webhook(request: Request):
             "transcript": transcript_text,
             "transcriptConfidence": confidence,
             "tradieId": tradie_ctx.get("tradie_id"),
+            "userProfileId": tradie_ctx.get("user_profile_id"),
             "businessName": business_name,
             "nextAvailableSlot": next_slot_display,
             "photoUrls": [],
@@ -382,6 +431,7 @@ async def voice_webhook(request: Request):
         await asyncio.gather(
             lead_manager.broadcast_new_lead(lead_data),
             _cache_lead(lead_id, lead_data),
+            _persist_voice_lead(lead_data),
             return_exceptions=True,
         )
 
@@ -463,17 +513,12 @@ async def upload_lead_photo_public(
 
     except Exception as exc:
         logger.error("Photo analysis failed for lead %s: %s", lead_id, exc, exc_info=True)
-        # Still acknowledge the upload even if analysis fails
         await lead_manager.broadcast_lead_update({
             "id": lead_id,
-            "status": "photo_received",
-            "visionSummary": "Photo received — analysis pending.",
+            "status": "analysis_failed",
+            "visionSummary": f"Photo analysis failed: {exc}",
         })
-        return {
-            "status": "received",
-            "lead_id": lead_id,
-            "message": "Photo received. Analysis will be processed shortly.",
-        }
+        raise HTTPException(status_code=503, detail=f"Photo analysis failed: {exc}")
 
 
 @router.post("/voice/tts")
@@ -499,17 +544,23 @@ async def text_to_speech(req: TTSRequest):
 
 @router.post("/voice/token")
 async def get_livekit_token(
+    req: VoiceTokenRequest | None = None,
     user: User = Depends(get_current_user),
 ):
     """
     Get a LiveKit token for the logged-in user to start a voice session.
     Generates a unique room name for this session.
     """
+    mode = (req.mode if req else "tradie_copilot").strip().lower()
+    if mode not in {"tradie_copilot", "receptionist"}:
+        raise HTTPException(status_code=400, detail="mode must be tradie_copilot or receptionist")
+
     # Create a unique room name for this session
-    room_name = f"call-{user.id}-{int(datetime.now(timezone.utc).timestamp())}"
-    
-    # Generate token for the user
-    token = await generate_participant_token(room_name, f"user-{user.id}")
+    room_name = f"{mode}-{user.id}-{int(datetime.now(timezone.utc).timestamp())}"
+    identity = f"user-{user.id}" if mode == "tradie_copilot" else f"caller-{user.id}"
+
+    # Generate token for the participant
+    token = await generate_participant_token(room_name, identity)
     
     if not token:
         raise HTTPException(status_code=500, detail="Failed to generate LiveKit token")
@@ -518,6 +569,8 @@ async def get_livekit_token(
         "token": token,
         "url": settings.livekit_url,
         "room_name": room_name,
+        "mode": mode,
+        "identity": identity,
     }
 
 
@@ -558,7 +611,7 @@ async def internal_voice_patch(req: VoicePatchRequest):
     """
     Internal endpoint for Voice Workers to send UI patches (SDUI).
     """
-    await lead_manager.broadcast_to_tradie(req.tradie_id, {
+    await lead_manager.send_to_tradie(req.tradie_id, {
         "type": "patch",
         "operations": req.operations
     })

@@ -6,14 +6,13 @@ Triggers a click-to-call flow:
 2. When answering, bridge (Dial) the Customer.
 """
 import logging
-from fastapi import APIRouter, Depends, HTTPException, Request, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.future import select
 
 from core.deps import get_current_user
 from core.config import settings
 from db.session import get_db_context
-from models.lead import UserResult
 from models.user import User
 
 logger = logging.getLogger(__name__)
@@ -32,8 +31,10 @@ async def start_outbound_call(
     Initiate a bridge call: Business -> Tradie -> Customer.
     """
     if not settings.twilio_account_sid or not settings.twilio_auth_token:
-        logger.warning("Mocking outbound call to %s", req.customer_phone)
-        return {"status": "mock_initiated", "message": "Twilio not configured"}
+        raise HTTPException(
+            status_code=503,
+            detail="Twilio is not configured for outbound calls",
+        )
 
     # 1. Get Tradie's real phone number from profile
     try:
@@ -45,20 +46,23 @@ async def start_outbound_call(
             profile = result.scalar_one_or_none()
             
             tradie_phone = None
-            if profile and profile.inbound_config and "forward_to" in profile.inbound_config:
-                 tradie_phone = profile.inbound_config["forward_to"]
+            if profile and profile.inbound_config:
+                tradie_phone = (
+                    profile.inbound_config.get("forward_to")
+                    or profile.inbound_config.get("identifier")
+                )
             
             if not tradie_phone:
-                # Fallback to user's phone if stored in User model (it isn't usually)
-                # Or require it in request? 
-                # For hackathon, let's fallback to a default or error
-                # return {"error": "Tradie phone number not found in profile"}
-                # MOCK Fallback
-                tradie_phone = user.phone or "+61400000000" 
+                raise HTTPException(
+                    status_code=400,
+                    detail="Tradie forwarding number is not configured in inbound setup",
+                )
 
     except Exception as exc:
+        if isinstance(exc, HTTPException):
+            raise exc
         logger.error("Failed to fetch tradie profile: %s", exc)
-        tradie_phone = "+61400000000" # Safe fallback for dev
+        raise HTTPException(status_code=500, detail="Failed to resolve tradie profile")
 
     # 2. Trigger Twilio Call
     try:
@@ -99,5 +103,13 @@ async def start_outbound_call(
         return {"status": "initiated", "sid": data.get("sid")}
 
     except Exception as e:
+        import httpx
+        if isinstance(e, httpx.HTTPStatusError):
+            provider_detail = (e.response.text or "").strip()[:500]
+            logger.error("Twilio outbound HTTP error %s: %s", e.response.status_code, provider_detail)
+            raise HTTPException(
+                status_code=502,
+                detail=f"Twilio rejected the outbound call request ({e.response.status_code}): {provider_detail or 'no response body'}",
+            )
         logger.error("Twilio outbound error: %s", e)
         raise HTTPException(status_code=500, detail=str(e))
