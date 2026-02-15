@@ -57,3 +57,7 @@ app.include_router(leads.router, prefix="/api", tags=["leads"])
 app.include_router(profile.router, prefix="/api", tags=["profile"])
 app.include_router(voice.router, prefix="/api", tags=["voice"])
 app.include_router(ws_leads.router, tags=["realtime"])
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
