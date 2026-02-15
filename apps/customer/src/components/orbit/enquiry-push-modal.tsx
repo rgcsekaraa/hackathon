@@ -28,12 +28,29 @@ import ImageSearchOutlined from "@mui/icons-material/ImageSearchOutlined";
 import SendOutlined from "@mui/icons-material/SendOutlined";
 import NotificationsActiveOutlined from "@mui/icons-material/NotificationsActiveOutlined";
 import AutoAwesomeOutlined from "@mui/icons-material/AutoAwesomeOutlined";
-
-import {
-  type ChargeLineItem,
-} from "@/lib/mock-data";
 import { useWorkspace } from "@/components/providers/WorkspaceProvider";
-import { type IncomingEnquiryPush } from "@/lib/mock-data";
+import { useAuth } from "@/lib/auth-context";
+
+interface ChargeLineItem {
+  label: string;
+  amount: number;
+  note?: string;
+}
+
+interface IncomingEnquiryPush {
+  id: string;
+  customerName: string;
+  customerPhone: string;
+  requestSummary: string;
+  category: string;
+  location: string;
+  distanceKm: number;
+  charges: ChargeLineItem[];
+  totalEstimate: number;
+  suggestedTime: string;
+  suggestedDate: string;
+  imageAnalysis?: string;
+}
 
 const SlideUp = React.forwardRef(function SlideUp(
   props: TransitionProps & { children: React.ReactElement },
@@ -558,6 +575,7 @@ function PushBanner({ data, onTap, onDismiss }: PushBannerProps) {
 
 export default function EnquiryPushSystem() {
   const { newLeadPush, clearNewLeadPush } = useWorkspace();
+  const { token } = useAuth();
   const [modalOpen, setModalOpen] = useState(false);
   const [modalData, setModalData] = useState<IncomingEnquiryPush | null>(null);
 
@@ -570,10 +588,10 @@ export default function EnquiryPushSystem() {
         customerPhone: newLeadPush.phone,
         requestSummary: newLeadPush.summary,
         category: newLeadPush.subject,
-        location: "Unknown Location", // Backend doesn't send this yet
-        distanceKm: 0,
-        charges: [], // Backend doesn't send this via simple push yet
-        totalEstimate: 0,
+        location: newLeadPush.location || "Unknown Location",
+        distanceKm: newLeadPush.distanceKm ?? 0,
+        charges: [],
+        totalEstimate: newLeadPush.totalEstimate ?? 0,
         suggestedTime: "ASAP",
         suggestedDate: "Today"
     };
@@ -597,13 +615,41 @@ export default function EnquiryPushSystem() {
   }, []);
 
   const handleApprove = useCallback(
-    (data: IncomingEnquiryPush) => {
-      // TODO: Send approval to backend via sendAction
-      console.log("Approved quote:", data);
-      setModalOpen(false);
-      setModalData(null);
+    async (data: IncomingEnquiryPush) => {
+      if (!token) {
+        return;
+      }
+
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+        const notes = data.charges.length
+          ? data.charges.map((line) => `${line.label}: $${line.amount.toFixed(2)}`).join(" | ")
+          : "Approved from customer portal";
+
+        const res = await fetch(`${apiUrl}/api/leads/${data.id}/decision`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            decision: "approve",
+            notes,
+          }),
+        });
+
+        if (!res.ok) {
+          const payload = await res.json().catch(() => ({}));
+          throw new Error(payload.detail || "Failed to approve lead");
+        }
+      } catch (err) {
+        console.error("Failed to approve lead", err);
+      } finally {
+        setModalOpen(false);
+        setModalData(null);
+      }
     },
-    []
+    [token]
   );
 
   // Auto-dismiss banner after 10s if not tapped

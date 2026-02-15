@@ -186,7 +186,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             sx={{ 
               borderRadius: "16px", 
               p: 1,
-              backgroundColor: alpha(theme.palette.surfaceVariant.main, 0.3),
+              backgroundColor: alpha(theme.palette.action.hover, 0.5),
               border: "1px solid",
               borderColor: "divider"
             }} 
@@ -224,7 +224,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 sx={{
                   display: "flex",
                   alignItems: "center",
-                  backgroundColor: alpha(theme.palette.surfaceVariant.main, 0.4),
+                  backgroundColor: alpha(theme.palette.action.hover, 0.6),
                   borderRadius: "14px",
                   px: 2,
                   py: 0.8,

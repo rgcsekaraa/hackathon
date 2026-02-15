@@ -7,6 +7,7 @@ import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
 import IconButton from "@mui/material/IconButton";
 import Badge from "@mui/material/Badge";
+import Chip from "@mui/material/Chip";
 import BottomNavigation from "@mui/material/BottomNavigation";
 import BottomNavigationAction from "@mui/material/BottomNavigationAction";
 import Avatar from "@mui/material/Avatar";
@@ -56,7 +57,7 @@ export default function DashboardShell({ children }: { children?: React.ReactNod
   const isTablet = useMediaQuery(theme.breakpoints.between("sm", "md"));
   const { user, logout } = useAuth();
   const { mode, toggleMode } = useThemeMode();
-  const { activeCall, activeCaller } = useWorkspace();
+  const { activeCall, activeCaller, notifications, agentStage } = useWorkspace();
   const [tab, setTab] = useState<TabValue>("today");
   const [notifOpen, setNotifOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -247,7 +248,7 @@ export default function DashboardShell({ children }: { children?: React.ReactNod
               sx={{ color: "text.secondary", mr: 0.5 }}
             >
               <Badge
-                badgeContent={2}
+                badgeContent={notifications.filter((n) => !n.read).length}
                 sx={{
                   "& .MuiBadge-badge": {
                     bgcolor: isDark ? "#8AB4F8" : "#1A73E8",
@@ -369,6 +370,7 @@ export default function DashboardShell({ children }: { children?: React.ReactNod
                 <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
                     Active Call: {activeCaller || "Unknown Caller"}
                 </Typography>
+                <Chip size="small" label={`Stage: ${agentStage}`} sx={{ bgcolor: "rgba(255,255,255,0.2)", color: "white" }} />
                 <style>
                     {`
                     @keyframes pulse {

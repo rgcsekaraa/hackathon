@@ -13,6 +13,7 @@ import { useAuth } from "@/components/providers/AuthProvider";
 
 type ConnectionStatus = "connecting" | "connected" | "disconnected" | "error";
 type ServerStatus = "listening" | "thinking" | "updating" | "synced" | "error";
+type AgentStage = "idle" | "receptionist" | "estimating" | "tradie_copilot" | "completed";
 
 interface WorkspaceComponent {
   id: string;
@@ -36,6 +37,9 @@ export interface Enquiry {
   status: "new" | "pending" | "responded" | "closed";
   receivedAt: string;
   rawCreatedAt?: string;
+  location?: string;
+  distanceKm?: number;
+  totalEstimate?: number;
 }
 
 export interface Notification {
@@ -64,6 +68,8 @@ interface WorkspaceState {
   markAllNotificationsRead: () => void;
   activeCall: boolean;
   activeCaller: string | null;
+  agentStage: AgentStage;
+  lastVoiceEvent: string | null;
 }
 
 const WorkspaceContext = createContext<WorkspaceState | null>(null);
@@ -83,6 +89,34 @@ interface WorkspaceProviderProps {
 
 const WS_BASE_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000";
 
+function mapLeadStatus(status: string): Enquiry["status"] {
+  if (status === "details_collected" || status === "media_pending" || status === "pricing" || status === "tradie_review") {
+    return "pending";
+  }
+  if (status === "confirmed" || status === "booked") {
+    return "responded";
+  }
+  if (status === "rejected" || status === "cancelled") {
+    return "closed";
+  }
+  return "new";
+}
+
+function mapAgentStageFromLeadStatus(status: string | null | undefined): AgentStage {
+  const normalized = String(status || "").toLowerCase();
+  if (normalized === "tradie_review") return "tradie_copilot";
+  if (normalized === "confirmed" || normalized === "booked") return "completed";
+  if (
+    normalized === "new" ||
+    normalized === "details_collected" ||
+    normalized === "media_pending" ||
+    normalized === "pricing"
+  ) {
+    return "estimating";
+  }
+  return "idle";
+}
+
 /**
  * Manages WebSocket connection to the backend and workspace state.
  *
@@ -100,6 +134,11 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   const [serverStatus, setServerStatus] = useState<ServerStatus>("synced");
   const [lastIntents, setLastIntents] = useState<Array<Record<string, unknown>>>([]);
   const [newLeadPush, setNewLeadPush] = useState<Enquiry | null>(null);
+  const [activeCall, setActiveCall] = useState(false);
+  const [activeCaller, setActiveCaller] = useState<string | null>(null);
+  const [agentStage, setAgentStage] = useState<AgentStage>("idle");
+  const [lastVoiceEvent, setLastVoiceEvent] = useState<string | null>(null);
+  const latestLeadStatusRef = useRef<string | null>(null);
   
   const { token } = useAuth();
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -112,6 +151,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       });
       if (res.ok) {
         const data = await res.json();
+        latestLeadStatusRef.current = data[0]?.status ? String(data[0].status) : null;
         // Map backend LeadSession to UI Enquiry
         const mapped = data.map((l: any) => ({
           id: l.id,
@@ -119,20 +159,22 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
           phone: l.customer_phone || "",
           subject: l.job_type || "General Enquiry",
           summary: l.job_description || "",
-          status: l.status === "details_collected" ? "pending" : 
-                  l.status === "confirmed" ? "responded" :
-                  l.status === "booked" ? "responded" :
-                  l.status === "rejected" ? "closed" :
-                  l.status === "cancelled" ? "closed" : "new",
+          status: mapLeadStatus(l.status),
           receivedAt: new Date(l.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          rawCreatedAt: l.created_at // Keep for sorting if needed
+          rawCreatedAt: l.created_at,
+          location: l.customer_address || "",
+          distanceKm: typeof l.distance_km === "number" ? l.distance_km : undefined,
+          totalEstimate: typeof l.quote_total === "number" ? l.quote_total : undefined,
         }));
         setLeads(mapped);
+        if (!activeCall) {
+          setAgentStage(mapAgentStageFromLeadStatus(latestLeadStatusRef.current));
+        }
       }
     } catch (err) {
       console.error("Failed to fetch leads:", err);
     }
-  }, [token, API_URL]);
+  }, [token, API_URL, activeCall]);
 
   useEffect(() => {
     if (token) refreshLeads();
@@ -175,8 +217,10 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     setReadNotificationIds(new Set(allIds));
   }, [notifications]);
 
-  const wsRef = useRef<WebSocket | null>(null);
-  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sessionWsRef = useRef<WebSocket | null>(null);
+  const leadsWsRef = useRef<WebSocket | null>(null);
+  const sessionReconnectRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const leadsReconnectRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const applyPatches = useCallback((operations: Array<Record<string, unknown>>) => {
     setComponents((prev) => {
@@ -214,10 +258,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     });
   }, []);
 
-  const [activeCall, setActiveCall] = useState(false);
-  const [activeCaller, setActiveCaller] = useState<string | null>(null);
-
-  const handleServerMessage = useCallback((message: Record<string, unknown>) => {
+  const handleSessionMessage = useCallback((message: Record<string, unknown>) => {
     const type = message.type as string;
 
     if (type === "status") {
@@ -227,50 +268,92 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     } else if (type === "patch") {
       const operations = message.operations as Array<Record<string, unknown>>;
       applyPatches(operations);
-    } else if (type === "new_lead") {
+    }
+  }, [applyPatches]);
+
+  const handleLeadsMessage = useCallback((message: Record<string, unknown>) => {
+    const type = message.type as string;
+
+    if (type === "new_lead") {
       const l = message.lead as any;
+      latestLeadStatusRef.current = String(l?.status || "new");
       const mapped: Enquiry = {
         id: l.id,
-        name: l.customerName || "Unknown Customer",
-        phone: l.customerPhone || "",
-        subject: l.jobType || "New Request",
-        summary: l.description || "",
-        status: "new",
-        receivedAt: "Just now"
+        name: l.customerName || l.customer_name || "Unknown Customer",
+        phone: l.customerPhone || l.customer_phone || "",
+        subject: l.jobType || l.job_type || "New Request",
+        summary: l.description || l.job_description || "",
+        status: mapLeadStatus(String(l.status || "new")),
+        receivedAt: "Just now",
+        location: l.address || l.customer_address || "",
+        distanceKm: typeof l.distanceKm === "number" ? l.distanceKm : (typeof l.distance_km === "number" ? l.distance_km : undefined),
+        totalEstimate: typeof l.quoteTotal === "number" ? l.quoteTotal : (typeof l.quote_total === "number" ? l.quote_total : undefined),
       };
       // Populate newLeadPush for the UI alert
       setNewLeadPush(mapped);
       // Add to list immediately
-      setLeads(prev => [mapped, ...prev]);
+      setLeads(prev => [mapped, ...prev.filter((item) => item.id !== mapped.id)]);
+      setAgentStage("estimating");
+      setLastVoiceEvent(`New lead captured: ${mapped.subject}`);
+      void refreshLeads();
+    } else if (type === "lead_update") {
+      const lead = message.lead as Record<string, unknown> | undefined;
+      const status = String(lead?.status ?? "");
+      if (status) latestLeadStatusRef.current = status;
+      if (status === "photo_analysed") {
+        setAgentStage("estimating");
+        setLastVoiceEvent("Photo analysed. Quote refinement in progress.");
+      } else if (status === "photo_received") {
+        setAgentStage("estimating");
+        setLastVoiceEvent("Photo received. Analysis queued.");
+      } else if (status === "analysis_failed") {
+        setAgentStage("estimating");
+        setLastVoiceEvent("Photo analysis failed. Check provider/API config.");
+      } else if (status === "tradie_review") {
+        setAgentStage("tradie_copilot");
+        setLastVoiceEvent("Estimator complete. Handoff to tradie copilot.");
+      } else if (status === "confirmed" || status === "booked") {
+        setAgentStage("completed");
+        setLastVoiceEvent(`Lead ${status}.`);
+      } else if (status) {
+        setAgentStage(mapAgentStageFromLeadStatus(status));
+      }
+      void refreshLeads();
     } else if (type === "call_status") {
         const status = message.status as string;
         const caller = message.caller as string;
         if (status === "started") {
             setActiveCall(true);
             setActiveCaller(caller);
+            setAgentStage(caller?.startsWith("user-") ? "tradie_copilot" : "receptionist");
+            setLastVoiceEvent(`Call started: ${caller || "unknown caller"}`);
         } else {
             setActiveCall(false);
             setActiveCaller(null);
+            setAgentStage(mapAgentStageFromLeadStatus(latestLeadStatusRef.current));
+            setLastVoiceEvent("Call ended");
         }
     }
-  }, [applyPatches]);
+  }, [refreshLeads]);
 
-  const connectRef = useRef<() => void>(() => {});
+  const connectSessionRef = useRef<() => void>(() => {});
+  const connectLeadsRef = useRef<() => void>(() => {});
 
-  const connect = useCallback(() => {
-    if (wsRef.current?.readyState === WebSocket.OPEN || !token) return;
+  const connectSession = useCallback(() => {
+    if (!token || sessionWsRef.current?.readyState === WebSocket.OPEN) return;
 
     setConnectionStatus("connecting");
-    const ws = new WebSocket(`${WS_BASE_URL}/ws/leads?token=${token}`);
+    const ws = new WebSocket(`${WS_BASE_URL}/ws/session?token=${token}`);
 
     ws.onopen = () => {
       setConnectionStatus("connected");
+      ws.send(JSON.stringify({ type: "sync_request" }));
     };
 
     ws.onmessage = (event: MessageEvent) => {
       try {
         const message = JSON.parse(event.data);
-        handleServerMessage(message as Record<string, unknown>);
+        handleSessionMessage(message as Record<string, unknown>);
       } catch (err) {
         console.error("Failed to parse WebSocket message:", err);
       }
@@ -278,24 +361,48 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
 
     ws.onclose = () => {
       setConnectionStatus("disconnected");
-      reconnectTimerRef.current = setTimeout(() => connectRef.current(), 2000);
+      sessionReconnectRef.current = setTimeout(() => connectSessionRef.current(), 2000);
     };
 
     ws.onerror = () => {
       setConnectionStatus("error");
     };
 
-    wsRef.current = ws;
-  }, [token, handleServerMessage]);
+    sessionWsRef.current = ws;
+  }, [token, handleSessionMessage]);
+
+  const connectLeads = useCallback(() => {
+    if (!token || leadsWsRef.current?.readyState === WebSocket.OPEN) return;
+    const ws = new WebSocket(`${WS_BASE_URL}/ws/leads?token=${token}`);
+
+    ws.onmessage = (event: MessageEvent) => {
+      try {
+        const message = JSON.parse(event.data);
+        handleLeadsMessage(message as Record<string, unknown>);
+      } catch (err) {
+        console.error("Failed to parse leads WebSocket message:", err);
+      }
+    };
+
+    ws.onclose = () => {
+      leadsReconnectRef.current = setTimeout(() => connectLeadsRef.current(), 2000);
+    };
+
+    leadsWsRef.current = ws;
+  }, [token, handleLeadsMessage]);
 
   useEffect(() => {
-    connectRef.current = connect;
-  }, [connect]);
+    connectSessionRef.current = connectSession;
+  }, [connectSession]);
+
+  useEffect(() => {
+    connectLeadsRef.current = connectLeads;
+  }, [connectLeads]);
 
   const sendUtterance = useCallback((text: string, source: "voice" | "text" | "chip") => {
-    if (wsRef.current?.readyState !== WebSocket.OPEN) return;
+    if (sessionWsRef.current?.readyState !== WebSocket.OPEN) return;
 
-    wsRef.current.send(JSON.stringify({
+    sessionWsRef.current.send(JSON.stringify({
       type: "utterance",
       text,
       source,
@@ -304,9 +411,9 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   }, []);
 
   const sendAction = useCallback((action: string, componentId: string, payload?: Record<string, unknown>) => {
-    if (wsRef.current?.readyState !== WebSocket.OPEN) return;
+    if (sessionWsRef.current?.readyState !== WebSocket.OPEN) return;
 
-    wsRef.current.send(JSON.stringify({
+    sessionWsRef.current.send(JSON.stringify({
       type: "action",
       action,
       componentId,
@@ -315,19 +422,24 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   }, []);
 
   const requestSync = useCallback(() => {
-    if (wsRef.current?.readyState !== WebSocket.OPEN) return;
-    wsRef.current.send(JSON.stringify({ type: "sync_request" }));
+    if (sessionWsRef.current?.readyState !== WebSocket.OPEN) return;
+    sessionWsRef.current.send(JSON.stringify({ type: "sync_request" }));
   }, []);
 
   useEffect(() => {
-    const timer = setTimeout(() => connect(), 0);
+    const timer = setTimeout(() => {
+      connectSession();
+      connectLeads();
+    }, 0);
 
     return () => {
       clearTimeout(timer);
-      if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
-      wsRef.current?.close();
+      if (sessionReconnectRef.current) clearTimeout(sessionReconnectRef.current);
+      if (leadsReconnectRef.current) clearTimeout(leadsReconnectRef.current);
+      sessionWsRef.current?.close();
+      leadsWsRef.current?.close();
     };
-  }, [connect, token]);
+  }, [connectSession, connectLeads, token]);
 
   const value: WorkspaceState = {
     components,
@@ -346,6 +458,8 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     markAllNotificationsRead,
     activeCall,
     activeCaller,
+    agentStage,
+    lastVoiceEvent,
   };
 
   return (

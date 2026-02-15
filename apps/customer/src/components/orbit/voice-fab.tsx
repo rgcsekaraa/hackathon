@@ -1,38 +1,36 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import Fab from "@mui/material/Fab";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Slide from "@mui/material/Slide";
 import Paper from "@mui/material/Paper";
 import IconButton from "@mui/material/IconButton";
-import MicNoneOutlined from "@mui/icons-material/MicNoneOutlined";
 import MicOutlined from "@mui/icons-material/MicOutlined";
 import Close from "@mui/icons-material/Close";
 import CircularProgress from "@mui/material/CircularProgress";
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
+import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
+import ToggleButton from "@mui/material/ToggleButton";
 import { useTheme } from "@mui/material/styles";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { useAuth } from "@/lib/auth-context";
+import { useWorkspace } from "@/components/providers/WorkspaceProvider";
 
 import {
   LiveKitRoom,
   RoomAudioRenderer,
   BarVisualizer,
   useVoiceAssistant,
-  useConnectionState,
-  useLocalParticipant,
 } from "@livekit/components-react";
-import { ConnectionState } from "livekit-client";
 import "@livekit/components-styles";
 
 // Inner component to handle voice assistant state
 function ActiveVoiceSession({ onClose }: { onClose: () => void }) {
   const theme = useTheme();
   const { state, audioTrack, agentTranscriptions } = useVoiceAssistant();
-  const { localParticipant } = useLocalParticipant();
   const isDark = theme.palette.mode === "dark";
 
   const lastTranscript = agentTranscriptions[agentTranscriptions.length - 1]?.text ?? "";
@@ -119,13 +117,15 @@ export default function VoiceFab() {
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const { token: authToken } = useAuth(); // Auth token for API
   
+  const { agentStage, lastVoiceEvent } = useWorkspace();
   const [isOpen, setIsOpen] = useState(false);
   const [roomToken, setRoomToken] = useState("");
   const [url, setUrl] = useState("");
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mode, setMode] = useState<"tradie_copilot" | "receptionist">("tradie_copilot");
 
-  const fetchToken = async () => {
+  const fetchToken = async (selectedMode: "tradie_copilot" | "receptionist") => {
     try {
       setIsConnecting(true);
       setError(null);
@@ -133,8 +133,10 @@ export default function VoiceFab() {
       const res = await fetch(`${apiUrl}/api/voice/token`, {
         method: "POST",
         headers: {
+          "Content-Type": "application/json",
           Authorization: `Bearer ${authToken ?? ""}`,
         },
+        body: JSON.stringify({ mode: selectedMode }),
       });
       
       if (!res.ok) {
@@ -162,9 +164,9 @@ export default function VoiceFab() {
       setIsOpen(false);
       setRoomToken(""); 
     } else {
-      fetchToken();
+      fetchToken(mode);
     }
-  }, [isOpen, authToken]);
+  }, [isOpen, authToken, mode]);
 
   const handleClose = useCallback(() => {
     setIsOpen(false);
@@ -193,6 +195,29 @@ export default function VoiceFab() {
             borderColor: "divider",
           }}
         >
+          <Box sx={{ mb: 1.5 }}>
+            <ToggleButtonGroup
+              value={mode}
+              exclusive
+              onChange={(_, next) => next && setMode(next)}
+              size="small"
+              fullWidth
+              disabled={isOpen || isConnecting}
+            >
+              <ToggleButton value="tradie_copilot">Tradie Copilot</ToggleButton>
+              <ToggleButton value="receptionist">Receptionist</ToggleButton>
+            </ToggleButtonGroup>
+          </Box>
+          <Box sx={{ mb: 1.5 }}>
+            <Typography variant="caption" sx={{ color: "text.secondary" }}>
+              Agent Stage: {agentStage}
+            </Typography>
+            {lastVoiceEvent && (
+              <Typography variant="body2" sx={{ color: "text.primary", mt: 0.5 }}>
+                {lastVoiceEvent}
+              </Typography>
+            )}
+          </Box>
           {roomToken && url && (
             <LiveKitRoom
               token={roomToken}

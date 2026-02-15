@@ -52,15 +52,15 @@ function EnquiryItem({ item }: { item: Enquiry }) {
 
   const cfg = statusConfig[item.status];
 
-  const { token, user } = useAuth(); // Need token to call API
+  const { token } = useAuth();
 
   const handleCall = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    // window.open(`tel:${item.phone.replace(/\s/g, "")}`, "_self");
     if (!token) return;
 
     try {
-        const res = await fetch("/api/voice/outbound", {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+        const res = await fetch(`${apiUrl}/api/voice/outbound`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
