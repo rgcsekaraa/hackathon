@@ -262,18 +262,22 @@ To enable inbound phone calls, you must expose your local server to the internet
 
 ### 🪐 Sophiie Orbit (The Operation)
 Mobile-first workspace for **Trade Professionals** to manage daily operations.
-- **Enquiry Management**: Real-time leads from voice/text calls.
-- **Hands-free AI**: Voice Assistant (VoiceFab) for scheduling and SMS.
-- **Quote Approvals**: Review and dispatch AI-generated quotes.
+- **Enquiry Management**: Real-time leads with inline location, distance, and estimate data. Snackbar feedback on call actions.
+- **Hands-free AI**: Voice Assistant (VoiceFab) with retry-on-failure, multi-state labels (Connecting/Listening/Speaking), and live transcripts.
+- **Quote Approvals**: Review and dispatch AI-generated quotes via push-banner modal.
+- **Smart States**: Empty-state illustrations, relative timestamps, and live connection indicators (Live/Offline chip in app bar).
+- **Appointment Tracking**: Today’s schedule with status-coded cards, connection badge, and friendly empty-day messaging.
 
 > [!TIP]
 > **Mobile Utility**: A native mobile app experience is critical for tradies, allowing them to manage their workspace, receive real-time lead alerts, and use the voice assistant while on the job or between sites.
 
 ### 🌌 Sophiie Space (The Command Center)
 Internal control plane for **Platform Administrators**.
+- **Dashboard Overview**: Stat cards with colored icons, live agent stage chip (pulse animation), and AI pipeline status.
 - **User Onboarding**: Configure tradie business profiles, rates, and service areas.
-- **Voice Orchestration**: Map Twilio numbers to specific AI personas.
-- **System Monitoring**: Track voice pipeline health and business performance.
+- **Customer Management**: Searchable customer table with service-type chips, status badges, and empty-state guidance.
+- **Voice Orchestration**: Map Twilio numbers to specific AI personas with validated inbound setup (helper text, Snackbar feedback).
+- **System Monitoring**: Status-dot indicators (green/red) for Deepgram, ElevenLabs, Twilio. Voice event timeline feed. Token testing tools.
 
 - **Customer Surface** — Customer-facing interactions via SMS, voice calls, and photo upload links triggered from the Orbit workflow.
 
