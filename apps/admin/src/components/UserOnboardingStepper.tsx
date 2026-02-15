@@ -15,6 +15,7 @@ import {
   Alert,
   MenuItem,
   InputAdornment,
+  Slider,
 } from "@mui/material";
 import { useAuth } from "@/lib/auth-context";
 
@@ -220,14 +221,19 @@ export default function UserOnboardingStepper({ onSuccess }: { onSuccess: () => 
                 onChange={handleChange("hourly_rate")}
               />
             </Stack>
-            <Stack direction="row" spacing={2}>
-                <TextField
-                    label="Service Radius (km)"
-                    type="number"
-                    fullWidth
-                    value={formData.service_radius_km}
-                    onChange={handleChange("service_radius_km")}
+            <Box sx={{ px: 1, py: 2 }}>
+                <Typography gutterBottom>Service Radius: {formData.service_radius_km} km</Typography>
+                <Slider
+                    value={typeof formData.service_radius_km === 'number' ? formData.service_radius_km : 30}
+                    onChange={(_, val) => setFormData((prev) => ({ ...prev, service_radius_km: val as number }))}
+                    valueLabelDisplay="auto"
+                    step={5}
+                    marks
+                    min={5}
+                    max={100}
                 />
+            </Box>
+            <Stack direction="row" spacing={2}>
                 <TextField
                     label="Travel Rate ($/km)"
                     type="number"
