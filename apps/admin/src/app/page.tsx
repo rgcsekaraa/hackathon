@@ -84,8 +84,10 @@ interface VoiceStatus {
   deepgram?: { configured?: boolean };
   elevenlabs?: { configured?: boolean; voice_id?: string };
   twilio?: { configured?: boolean };
-  websocket?: { connected_tradies?: number; active_connections?: number };
+  websocket?: { connected_tradies?: string[]; active_connections?: number };
 }
+
+type AgentStage = "idle" | "receptionist" | "estimating" | "tradie_copilot" | "completed";
 
 interface SetupDraft {
   provider: string;
@@ -138,9 +140,12 @@ export default function AdminPortalPage() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [stats, setStats] = useState<AdminStats>({ total_customers: 0, total_leads: 0, booking_rate: 0, active_portals: 0 });
   const [voiceStatus, setVoiceStatus] = useState<VoiceStatus | null>(null);
+  const [agentStage, setAgentStage] = useState<AgentStage>("idle");
+  const [lastVoiceEvent, setLastVoiceEvent] = useState<string>("No realtime voice events yet.");
 
   const [setupBusy, setSetupBusy] = useState(false);
   const [monitorBusy, setMonitorBusy] = useState(false);
+  const [voiceTokenPreview, setVoiceTokenPreview] = useState<string>("");
 
   const [setupOpen, setSetupOpen] = useState(false);
   const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null);
@@ -219,9 +224,85 @@ export default function AdminPortalPage() {
     }
   };
 
+  const generateVoiceToken = async (mode: "tradie_copilot" | "receptionist") => {
+    if (!token) return;
+    setMonitorBusy(true);
+    try {
+      const res = await fetch(`${API_URL}/api/voice/token`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ mode }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(payload.detail || "Failed to generate token");
+      setVoiceTokenPreview(`${mode}: ${String(payload.room_name || "")}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to generate token");
+    } finally {
+      setMonitorBusy(false);
+    }
+  };
+
   useEffect(() => {
     void fetchAdminData();
     void fetchVoiceStatus();
+  }, [token]);
+
+  useEffect(() => {
+    if (!token) return;
+    const wsBase = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000";
+    const ws = new WebSocket(`${wsBase}/ws/leads?token=${token}`);
+
+    ws.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data) as Record<string, unknown>;
+        const type = String(message.type || "");
+        if (type === "call_status") {
+          const status = String(message.status || "");
+          const caller = String(message.caller || "unknown");
+          if (status === "started") {
+            setAgentStage(caller.startsWith("user-") ? "tradie_copilot" : "receptionist");
+            setLastVoiceEvent(`Call started: ${caller}`);
+          } else {
+            setAgentStage("idle");
+            setLastVoiceEvent(`Call ended: ${caller}`);
+          }
+        } else if (type === "new_lead") {
+          const lead = message.lead as Record<string, unknown> | undefined;
+          setAgentStage("estimating");
+          setLastVoiceEvent(`Lead captured: ${String(lead?.id || "unknown")}`);
+        } else if (type === "lead_update") {
+          const lead = message.lead as Record<string, unknown> | undefined;
+          const status = String(lead?.status || "");
+          if (status === "photo_analysed") {
+            setAgentStage("estimating");
+            setLastVoiceEvent("Photo analysed. Recomputing quote.");
+          } else if (status === "photo_received") {
+            setAgentStage("estimating");
+            setLastVoiceEvent("Photo received. Analysis pending.");
+          } else if (status === "analysis_failed") {
+            setAgentStage("estimating");
+            setLastVoiceEvent("Photo analysis failed. Check provider/API config.");
+          } else if (status === "tradie_review") {
+            setAgentStage("tradie_copilot");
+            setLastVoiceEvent("Estimator complete. Waiting tradie decision.");
+          } else if (status === "confirmed" || status === "booked") {
+            setAgentStage("completed");
+            setLastVoiceEvent(`Lead ${status}.`);
+          }
+        }
+      } catch {
+        // Ignore malformed ws messages
+      }
+    };
+
+    ws.onclose = () => {
+      setLastVoiceEvent("Realtime stream disconnected.");
+    };
+
+    return () => {
+      ws.close();
+    };
   }, [token]);
 
   const handleOnboardSuccess = async () => {
@@ -388,8 +469,19 @@ export default function AdminPortalPage() {
           <Typography variant="body2">Deepgram configured: {String(Boolean(voiceStatus?.deepgram?.configured))}</Typography>
           <Typography variant="body2">ElevenLabs configured: {String(Boolean(voiceStatus?.elevenlabs?.configured))}</Typography>
           <Typography variant="body2">Twilio configured: {String(Boolean(voiceStatus?.twilio?.configured))}</Typography>
-          <Typography variant="body2">Live connected tradies: {voiceStatus?.websocket?.connected_tradies ?? 0}</Typography>
+          <Typography variant="body2">Live connected tradies: {voiceStatus?.websocket?.connected_tradies?.length ?? 0}</Typography>
           <Typography variant="body2">Active WS connections: {voiceStatus?.websocket?.active_connections ?? 0}</Typography>
+          <Typography variant="body2">Current agent stage: {agentStage}</Typography>
+          <Typography variant="body2">Last voice event: {lastVoiceEvent}</Typography>
+          <Stack direction="row" spacing={1} sx={{ pt: 1 }}>
+            <Button size="small" variant="outlined" onClick={() => void generateVoiceToken("tradie_copilot")} disabled={monitorBusy || !token}>
+              Test Tradie Mode
+            </Button>
+            <Button size="small" variant="outlined" onClick={() => void generateVoiceToken("receptionist")} disabled={monitorBusy || !token}>
+              Test Receptionist Mode
+            </Button>
+          </Stack>
+          {voiceTokenPreview ? <Typography variant="caption" color="text.secondary">{voiceTokenPreview}</Typography> : null}
         </Stack>
       </Paper>
     </Stack>

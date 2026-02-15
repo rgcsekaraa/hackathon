@@ -16,11 +16,9 @@ import {
 } from "@mui/material";
 import NotificationsOutlined from "@mui/icons-material/NotificationsOutlined";
 import InfoOutlined from "@mui/icons-material/InfoOutlined";
-import CallEnd from "@mui/icons-material/CallEnd";
 import Call from "@mui/icons-material/Call";
 import PersonAdd from "@mui/icons-material/PersonAdd";
 import { useAuth } from "@/lib/auth-context";
-import { useTheme } from "@mui/material/styles";
 
 interface NotificationEvent {
   id: string;
@@ -33,7 +31,6 @@ interface NotificationEvent {
 
 export default function NotificationCenter() {
   const { token } = useAuth();
-  const theme = useTheme();
   const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
   const [notifications, setNotifications] = useState<NotificationEvent[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -111,7 +108,7 @@ export default function NotificationCenter() {
           id: Date.now().toString(),
           type: "new_lead",
           title: "New Lead Received",
-          message: `${data.lead.customer_name} requires ${data.lead.job_type}`,
+          message: `${data.lead?.customerName || data.lead?.customer_name || "Customer"} requires ${data.lead?.jobType || data.lead?.job_type || "service"}`,
           timestamp: now,
           read: false,
         };
@@ -121,24 +118,20 @@ export default function NotificationCenter() {
           id: Date.now().toString(),
           type: "lead_update",
           title: "Lead Updated",
-          message: `${data.lead.customer_name} - Status: ${data.lead.status}`,
+          message: `${data.lead?.customerName || data.lead?.customer_name || data.lead?.id || "Lead"} - Status: ${data.lead?.status || "updated"}`,
           timestamp: now,
           read: false,
         };
         break;
       case "call_status":
-        if (data.status === "started") {
-          newNotification = {
-            id: Date.now().toString(),
-            type: "call_status",
-            title: "Incoming Call",
-            message: `Call started with ${data.caller}`,
-            timestamp: now,
-            read: false,
-          };
-        } else {
-            // Optional: Log ended calls?
-        }
+        newNotification = {
+          id: Date.now().toString(),
+          type: "call_status",
+          title: data.status === "started" ? "Incoming Call" : "Call Ended",
+          message: `Call ${data.status || "updated"}: ${data.caller || "unknown caller"}`,
+          timestamp: now,
+          read: false,
+        };
         break;
        case "lead_decided":
         newNotification = {

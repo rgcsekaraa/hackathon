@@ -17,6 +17,30 @@ interface UseSpeechRecognitionReturn {
   stopListening: () => void;
 }
 
+type SpeechRecognitionLike = {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  maxAlternatives: number;
+  onresult: ((event: any) => void) | null;
+  onerror: ((event: any) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+};
+
+type SpeechRecognitionCtor = new () => SpeechRecognitionLike;
+
+function getSpeechRecognitionCtor(): SpeechRecognitionCtor | null {
+  if (typeof window === "undefined") return null;
+  const speechWindow = window as Window & {
+    SpeechRecognition?: SpeechRecognitionCtor;
+    webkitSpeechRecognition?: SpeechRecognitionCtor;
+  };
+  return speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition || null;
+}
+
 /**
  * Hook wrapping the Web Speech API for voice capture.
  * Provides interim and final transcripts, and handles browser compatibility.
@@ -29,14 +53,11 @@ export function useSpeechRecognition({
 }: UseSpeechRecognitionOptions = {}): UseSpeechRecognitionReturn {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState("");
-  const [isSupported, setIsSupported] = useState(() => 
-    typeof window !== "undefined" && !!(window.SpeechRecognition || window.webkitSpeechRecognition)
-  );
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const [isSupported] = useState(() => Boolean(getSpeechRecognitionCtor()));
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
 
   useEffect(() => {
-    const SpeechRecognition =
-      window.SpeechRecognition || window.webkitSpeechRecognition;
+    const SpeechRecognition = getSpeechRecognitionCtor();
 
     if (SpeechRecognition) {
       const recognition = new SpeechRecognition();
@@ -45,7 +66,7 @@ export function useSpeechRecognition({
       recognition.interimResults = true;
       recognition.maxAlternatives = 1;
 
-      recognition.onresult = (event: SpeechRecognitionEvent) => {
+      recognition.onresult = (event) => {
         let finalTranscript = "";
         let interimTranscript = "";
 
@@ -68,7 +89,7 @@ export function useSpeechRecognition({
         }
       };
 
-      recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+      recognition.onerror = (event) => {
         if (event.error !== "no-speech") {
           onError?.(event.error);
           setIsListening(false);
