@@ -10,6 +10,9 @@ import IconButton from "@mui/material/IconButton";
 import MicNoneOutlined from "@mui/icons-material/MicNoneOutlined";
 import MicOutlined from "@mui/icons-material/MicOutlined";
 import Close from "@mui/icons-material/Close";
+import CircularProgress from "@mui/material/CircularProgress";
+import Snackbar from "@mui/material/Snackbar";
+import Alert from "@mui/material/Alert";
 import { useTheme } from "@mui/material/styles";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { useAuth } from "@/lib/auth-context";
@@ -20,6 +23,7 @@ import {
   BarVisualizer,
   useVoiceAssistant,
   useConnectionState,
+  useLocalParticipant,
 } from "@livekit/components-react";
 import { ConnectionState } from "livekit-client";
 import "@livekit/components-styles";
@@ -28,16 +32,25 @@ import "@livekit/components-styles";
 function ActiveVoiceSession({ onClose }: { onClose: () => void }) {
   const theme = useTheme();
   const { state, audioTrack, agentTranscriptions } = useVoiceAssistant();
+  const { localParticipant } = useLocalParticipant();
   const isDark = theme.palette.mode === "dark";
 
-  const lastTranscript = agentTranscriptions[agentTranscriptions.length - 1]?.text ?? "Listening...";
+  const lastTranscript = agentTranscriptions[agentTranscriptions.length - 1]?.text ?? "";
 
   return (
     <Box sx={{ width: "100%" }}>
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
-        <Typography variant="subtitle1" sx={{ color: "text.primary", fontWeight: 500 }}>
-          {state === "listening" ? "Sophie is listening..." : "Sophie is thinking..."}
-        </Typography>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+            {state === "listening" && (
+                <Box sx={{
+                    width: 8, height: 8, borderRadius: "50%", bgcolor: "#F44336",
+                    animation: "pulse 1.5s infinite"
+                }} />
+            )}
+            <Typography variant="subtitle1" sx={{ color: "text.primary", fontWeight: 600 }}>
+            {state === "listening" ? "Listening..." : "Thinking..."}
+            </Typography>
+        </Box>
         <IconButton size="small" onClick={onClose} sx={{ color: "text.secondary" }}>
           <Close fontSize="small" />
         </IconButton>
@@ -49,26 +62,30 @@ function ActiveVoiceSession({ onClose }: { onClose: () => void }) {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          height: 64,
+          height: 80,
           mb: 2,
-          bgcolor: isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)",
-          borderRadius: 2,
+          bgcolor: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)",
+          borderRadius: 3,
+          border: 1,
+          borderColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)",
         }}
       >
         <BarVisualizer
           state={state}
           barCount={7}
           trackRef={audioTrack}
-          style={{ height: "40px", gap: "4px" }}
-          options={{ minHeight: 10, maxHeight: 40 }}
+          style={{ height: "50px", gap: "6px" }}
+          options={{ minHeight: 12, maxHeight: 48 }}
         />
       </Box>
 
       {/* Transcript */}
       <Box
         sx={{
-          minHeight: 40,
-          bgcolor: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)",
+          minHeight: 60,
+          maxHeight: 120,
+          overflowY: "auto",
+          bgcolor: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.02)",
           borderRadius: 2,
           px: 2,
           py: 1.5,
@@ -77,14 +94,22 @@ function ActiveVoiceSession({ onClose }: { onClose: () => void }) {
         <Typography
           variant="body1"
           sx={{
-            color: "text.primary",
-            fontSize: "0.875rem",
-            lineHeight: 1.6,
+            color: lastTranscript ? "text.primary" : "text.secondary",
+            fontSize: "0.95rem",
+            lineHeight: 1.5,
+            fontStyle: lastTranscript ? "normal" : "italic",
           }}
         >
-          {lastTranscript}
+          {lastTranscript || "Say something like \"Show me my jobs for tomorrow\"..."}
         </Typography>
       </Box>
+      <style jsx global>{`
+        @keyframes pulse {
+          0% { transform: scale(0.95); opacity: 0.7; }
+          50% { transform: scale(1.1); opacity: 1; }
+          100% { transform: scale(0.95); opacity: 0.7; }
+        }
+      `}</style>
     </Box>
   );
 }
@@ -98,10 +123,12 @@ export default function VoiceFab() {
   const [roomToken, setRoomToken] = useState("");
   const [url, setUrl] = useState("");
   const [isConnecting, setIsConnecting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchToken = async () => {
     try {
       setIsConnecting(true);
+      setError(null);
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
       const res = await fetch(`${apiUrl}/api/voice/token`, {
         method: "POST",
@@ -109,12 +136,22 @@ export default function VoiceFab() {
           Authorization: `Bearer ${authToken ?? ""}`,
         },
       });
+      
+      if (!res.ok) {
+        throw new Error("Failed to get voice token");
+      }
+
       const data = await res.json();
+      if (!data.token || !data.url) {
+          throw new Error("Invalid token response");
+      }
+
       setRoomToken(data.token);
       setUrl(data.url);
       setIsOpen(true);
     } catch (e) {
       console.error(e);
+      setError("Failed to connect to AI Assistant");
     } finally {
       setIsConnecting(false);
     }
@@ -142,20 +179,18 @@ export default function VoiceFab() {
     <>
       <Slide direction="up" in={isOpen} mountOnEnter unmountOnExit>
         <Paper
-          elevation={0}
+          elevation={4}
           sx={{
             position: "fixed",
-            bottom: isMobile ? 72 : 0,
-            left: isMobile ? 0 : "auto",
-            right: 0,
-            width: isMobile ? "100%" : 380,
+            bottom: isMobile ? 80 : 24,
+            right: isMobile ? 16 : 96,
+            width: isMobile ? "calc(100% - 32px)" : 360,
             zIndex: 1300,
             bgcolor: "background.paper",
-            borderTop: 1,
-            borderColor: "divider",
-            borderRadius: isMobile ? "16px 16px 0 0" : "16px 0 0 0",
+            borderRadius: 4,
             p: 3,
-            pb: isMobile ? 4 : 3,
+            border: 1,
+            borderColor: "divider",
           }}
         >
           {roomToken && url && (
@@ -167,6 +202,7 @@ export default function VoiceFab() {
               video={false}
               onDisconnected={handleClose}
               data-lk-theme="default"
+              options={{ adaptiveStream: true }}
             >
               <ActiveVoiceSession onClose={handleClose} />
               <RoomAudioRenderer />
@@ -188,23 +224,34 @@ export default function VoiceFab() {
           disabled={isConnecting}
           aria-label={isOpen ? "Stop voice input" : "Start voice input"}
           sx={{
-            width: 56,
-            height: 56,
-            bgcolor: isOpen ? fabBg : fabBg,
-            color: fabColor,
-            transition: "transform 0.1s ease, box-shadow 0.2s ease",
+            width: 64,
+            height: 64,
+            bgcolor: isOpen ? "#F44336" : fabBg,
+            color: "#FFF",
+            boxShadow: isOpen ? "0 0 20px rgba(244, 67, 54, 0.4)" : 6,
+            transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
             "&:hover": {
-              bgcolor: isDark ? "#AECBFA" : "#4285F4",
+              bgcolor: isOpen ? "#D32F2F" : (isDark ? "#AECBFA" : "#1557B0"),
+              transform: "scale(1.05)",
             },
+            "&:disabled": {
+                bgcolor: "action.disabledBackground",
+            }
           }}
         >
-          {isOpen ? (
-            <MicOutlined sx={{ fontSize: 26 }} />
+          {isConnecting ? (
+            <CircularProgress size={24} color="inherit" />
+          ) : isOpen ? (
+            <Close sx={{ fontSize: 28 }} />
           ) : (
-            <MicNoneOutlined sx={{ fontSize: 26 }} />
+            <MicOutlined sx={{ fontSize: 28 }} />
           )}
         </Fab>
       </Box>
+
+      <Snackbar open={!!error} autoHideDuration={6000} onClose={() => setError(null)}>
+        <Alert severity="error" onClose={() => setError(null)}>{error}</Alert>
+      </Snackbar>
     </>
   );
 }
