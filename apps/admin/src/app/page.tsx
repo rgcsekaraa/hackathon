@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Alert,
   AppBar,
@@ -151,6 +152,7 @@ export default function AdminPortalPage() {
 
   const { token, user, isLoggedIn, logout } = useAuth();
   const { toggleMode } = useThemeMode();
+  const router = useRouter();
 
   const [tab, setTab] = useState<AdminTab>("overview");
   const [loading, setLoading] = useState(true);
@@ -486,12 +488,14 @@ export default function AdminPortalPage() {
       ? renderInbound()
       : renderMonitoring();
 
+  useEffect(() => {
+    if (!isLoggedIn && !token) {
+      router.replace("/auth/login");
+    }
+  }, [isLoggedIn, token, router]);
+
   if (!isLoggedIn && !token) {
-    return (
-      <Box sx={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <Typography color="text.secondary">Login required for admin portal.</Typography>
-      </Box>
-    );
+    return null;
   }
   if (user?.role && user.role !== "admin") {
     return (
