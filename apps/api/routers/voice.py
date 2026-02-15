@@ -10,6 +10,7 @@ proper TwiML flow, and Redis caching.
 """
 
 import asyncio
+import base64
 import logging
 import uuid
 from datetime import datetime, timezone
@@ -29,6 +30,7 @@ from core.deps import get_current_user
 from models.user import User
 from models.lead import LeadSession, UserProfile, LeadStatus
 from services.voice.livekit_rooms import generate_participant_token
+from services.lead_orchestrator import enqueue_photo_processing
 
 from core.config import settings
 
@@ -371,7 +373,12 @@ async def voice_webhook(request: Request):
         # Step 2: Classify (with tradie context) and optionally send SMS link
         classify_task = _safe_classify(transcript_text, tradie_context=tradie_ctx_text)
         inbound_cfg = tradie_ctx.get("inbound_config") or {}
-        sms_photo_enabled = bool(inbound_cfg.get("sms_photo_request_enabled", True))
+        sms_photo_enabled = bool(
+            inbound_cfg.get(
+                "sms_photo_request_enabled",
+                settings.sms_photo_request_default_enabled,
+            )
+        )
         if sms_photo_enabled:
             results = await asyncio.gather(
                 classify_task,
@@ -480,6 +487,26 @@ async def upload_lead_photo_public(
         raise HTTPException(status_code=400, detail="Empty file uploaded")
 
     logger.info("Photo upload for lead %s: %d bytes, %s", lead_id, len(image_bytes), mime_type)
+
+    image_b64 = base64.b64encode(image_bytes).decode("ascii")
+    queued = await enqueue_photo_processing(
+        lead_id,
+        image_b64=image_b64,
+        mime_type=mime_type or "image/jpeg",
+        source="api.voice.photos.public",
+    )
+    if queued:
+        await lead_manager.broadcast_lead_update({
+            "id": lead_id,
+            "status": "photo_received",
+            "pipeline_status": "queued",
+            "visionSummary": "Photo queued for analysis.",
+        })
+        return {
+            "status": "queued",
+            "lead_id": lead_id,
+            "message": "Photo received and queued for analysis.",
+        }
 
     try:
         from services.integrations.vision import analyse_image

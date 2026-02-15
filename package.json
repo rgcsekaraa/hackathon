@@ -18,7 +18,8 @@
     "lint": "pnpm exec nx run-many --target=lint",
     "typecheck": "pnpm exec nx run-many --target=typecheck",
     "worker:tradie": "cd apps/api && set -a && source .env && set +a && PYTHONPATH=. python services/voice/tradie_worker.py dev",
-    "worker:customer": "cd apps/api && set -a && source .env && set +a && PYTHONPATH=. python services/voice/customer_worker.py dev"
+    "worker:customer": "cd apps/api && set -a && source .env && set +a && PYTHONPATH=. python services/voice/customer_worker.py dev",
+    "worker:lead": "cd apps/api && set -a && source .env && set +a && PYTHONPATH=. python services/workers/lead_worker.py"
   },
   "engines": {
     "node": ">=20.0.0"

@@ -312,7 +312,12 @@ async def _process_and_respond(
             slot_text = f"Our next available slot is {slot['display']}. "
 
     inbound_cfg = session.tradie_ctx.get("inbound_config") or {}
-    sms_photo_enabled = bool(inbound_cfg.get("sms_photo_request_enabled", True))
+    sms_photo_enabled = bool(
+        inbound_cfg.get(
+            "sms_photo_request_enabled",
+            settings.sms_photo_request_default_enabled,
+        )
+    )
 
     # Send SMS photo link concurrently (if enabled in portal settings)
     sms_task = None

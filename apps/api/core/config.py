@@ -68,6 +68,9 @@ class Settings(BaseSettings):
     serpapi_api_key: str = ""
     pricing_live_enabled: bool = True
 
+    # Lead orchestration defaults
+    sms_photo_request_default_enabled: bool = True
+
     # Twilio (SMS)
     twilio_account_sid: str = ""
     twilio_auth_token: str = ""
@@ -83,7 +86,7 @@ class Settings(BaseSettings):
     # LiveKit (Real-time voice rooms)
     livekit_api_key: str = ""
     livekit_api_secret: str = ""
-    livekit_url: str = "wss://sophiie-orbit.livekit.cloud"
+    livekit_url: str = "ws://localhost:7880"
 
 
 

@@ -5,8 +5,8 @@ Handles lead CRUD, photo uploads, and tradie decisions.
 """
 
 from __future__ import annotations
+import base64
 import logging
-import uuid
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,12 +16,16 @@ from core.deps import get_current_user
 from models.user import User
 from models.lead import LeadSession, UserProfile, LeadStatus
 from schemas.lead import (
-    LeadCreate, LeadResponse, LeadUpdate, TradieDecision,
+    LeadCreate, LeadResponse, TradieDecision,
     CustomerMessage, LeadPatch,
 )
 from services.lead_orchestrator import (
-    create_lead, process_customer_message,
-    handle_tradie_decision, process_photo,
+    create_lead,
+    process_customer_message,
+    handle_tradie_decision,
+    process_photo,
+    enqueue_lead_processing,
+    enqueue_photo_processing,
 )
 from services.realtime.connection_manager import lead_manager
 
@@ -49,9 +53,11 @@ async def create_new_lead(
         )
 
     lead = await create_lead(db, profile.id, data)
-
-    # Process the initial message through the pipeline
-    patches = await process_customer_message(db, lead, data.job_description)
+    lead.status = LeadStatus.DETAILS_COLLECTED.value
+    queued = await enqueue_lead_processing(lead.id, data.job_description, source="api.create_lead")
+    if not queued:
+        # Redis queue unavailable -> sync fallback
+        await process_customer_message(db, lead, data.job_description)
 
     await db.commit()
     await db.refresh(lead)
@@ -68,6 +74,7 @@ async def create_new_lead(
         "jobType": lead.job_type or "",
         "description": lead.job_description or "",
         "quoteTotal": lead.quote_total,
+        "pipeline_status": "queued" if queued else "processed",
         "createdAt": lead.created_at.isoformat() if lead.created_at else "",
     })
 
@@ -124,12 +131,26 @@ async def send_customer_message(
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
 
-    patches = await process_customer_message(db, lead, message.text)
+    queued = await enqueue_lead_processing(lead.id, message.text, source="api.customer_message")
+    if queued:
+        lead.status = LeadStatus.DETAILS_COLLECTED.value
+        patches = [
+            LeadPatch(
+                type="step_changed",
+                lead_id=lead.id,
+                data={"step": "queued", "message": "Queued for background analysis."},
+                message="Queued for realtime enrichment.",
+            )
+        ]
+    else:
+        patches = await process_customer_message(db, lead, message.text)
     await db.commit()
 
     # Broadcast message update
     await lead_manager.broadcast_lead_update({
-        "id": lead.id, "status": lead.status,
+        "id": lead.id,
+        "status": lead.status,
+        "pipeline_status": "queued" if queued else "processed",
         "jobType": lead.job_type, "urgency": lead.urgency,
     })
     return patches
@@ -150,21 +171,40 @@ async def upload_photo(
         raise HTTPException(status_code=404, detail="Lead not found")
 
     image_bytes = await file.read()
-    try:
-        patches = await process_photo(db, lead, image_bytes=image_bytes)
-    except Exception as exc:
-        logger.error("Lead photo analysis failed for %s: %s", lead_id, exc, exc_info=True)
-        await lead_manager.broadcast_lead_update({
-            "id": lead.id,
-            "status": "analysis_failed",
-            "error": str(exc),
-        })
-        raise HTTPException(status_code=503, detail=f"Photo analysis failed: {exc}")
+    image_b64 = base64.b64encode(image_bytes).decode("ascii")
+    queued = await enqueue_photo_processing(
+        lead.id,
+        image_b64=image_b64,
+        mime_type=file.content_type or "image/jpeg",
+        source="api.leads.photo",
+    )
+    if queued:
+        patches = [
+            LeadPatch(
+                type="step_changed",
+                lead_id=lead.id,
+                data={"step": "photo_received", "message": "Photo received and queued for analysis."},
+                message="Photo queued for analysis.",
+            )
+        ]
+    else:
+        try:
+            patches = await process_photo(db, lead, image_bytes=image_bytes)
+        except Exception as exc:
+            logger.error("Lead photo analysis failed for %s: %s", lead_id, exc, exc_info=True)
+            await lead_manager.broadcast_lead_update({
+                "id": lead.id,
+                "status": "analysis_failed",
+                "error": str(exc),
+            })
+            raise HTTPException(status_code=503, detail=f"Photo analysis failed: {exc}")
     await db.commit()
 
     # Broadcast photo analysis → trigger quote recalculation on mobile
     await lead_manager.broadcast_lead_update({
-        "id": lead.id, "status": lead.status,
+        "id": lead.id,
+        "status": "photo_received" if queued else lead.status,
+        "pipeline_status": "queued" if queued else "processed",
         "photoAnalysis": lead.photo_analysis,
     })
     return patches

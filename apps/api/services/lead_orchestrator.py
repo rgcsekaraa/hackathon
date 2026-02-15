@@ -16,7 +16,7 @@ import json
 import logging
 import uuid
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Awaitable, Callable, Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -32,6 +32,7 @@ from services.integrations.vision import analyse_image
 from services.integrations.distance import calculate_distance
 from services.integrations.pricing import lookup_parts_price
 from services.integrations.sms import send_photo_upload_link, send_booking_confirmation
+from services.jobs.queue import enqueue_job
 from core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -171,6 +172,7 @@ async def process_customer_message(
     db: AsyncSession,
     lead: LeadSession,
     message: str,
+    on_patch: Callable[[LeadPatch], Awaitable[None]] | None = None,
 ) -> list[LeadPatch]:
     """
     Process a customer message through the pipeline.
@@ -178,6 +180,11 @@ async def process_customer_message(
     Returns a list of patches to broadcast over WebSocket.
     """
     patches: list[LeadPatch] = []
+
+    async def emit(patch: LeadPatch) -> None:
+        patches.append(patch)
+        if on_patch:
+            await on_patch(patch)
 
     # Add to conversation history
     lead.conversation = lead.conversation + [{
@@ -187,7 +194,7 @@ async def process_customer_message(
     }]
 
     # Step 1: Classify with AI
-    patches.append(LeadPatch(
+    await emit(LeadPatch(
         type="step_changed",
         lead_id=lead.id,
         data={"step": "classifying", "message": "Understanding your request..."},
@@ -206,7 +213,7 @@ async def process_customer_message(
 
     lead.status = LeadStatus.DETAILS_COLLECTED.value
 
-    patches.append(LeadPatch(
+    await emit(LeadPatch(
         type="lead_update",
         lead_id=lead.id,
         data={
@@ -231,9 +238,14 @@ async def process_customer_message(
 
     # Step 2: Offer photo upload
     inbound_cfg = profile.inbound_config or {}
-    sms_photo_enabled = bool(inbound_cfg.get("sms_photo_request_enabled", True))
+    sms_photo_enabled = bool(
+        inbound_cfg.get(
+            "sms_photo_request_enabled",
+            settings.sms_photo_request_default_enabled,
+        )
+    )
     if lead.customer_phone and sms_photo_enabled:
-        patches.append(LeadPatch(
+        await emit(LeadPatch(
             type="step_changed",
             lead_id=lead.id,
             data={"step": "photo_offer", "message": "Would you like to send photos for a more accurate quote?"},
@@ -241,7 +253,7 @@ async def process_customer_message(
         await send_photo_upload_link(lead.customer_phone, lead.id)
         lead.status = LeadStatus.MEDIA_PENDING.value
     elif not sms_photo_enabled:
-        patches.append(LeadPatch(
+        await emit(LeadPatch(
             type="step_changed",
             lead_id=lead.id,
             data={
@@ -254,7 +266,7 @@ async def process_customer_message(
         ))
 
     # Step 3: Calculate distance + pricing in parallel
-    patches.append(LeadPatch(
+    await emit(LeadPatch(
         type="step_changed",
         lead_id=lead.id,
         data={"step": "pricing", "message": "Calculating your estimate..."},
@@ -292,7 +304,7 @@ async def process_customer_message(
     lead.distance_km = distance_result.distance_km
     lead.travel_minutes = distance_result.duration_minutes
 
-    patches.append(LeadPatch(
+    await emit(LeadPatch(
         type="step_changed",
         lead_id=lead.id,
         data={
@@ -338,7 +350,7 @@ async def process_customer_message(
     # Step 5: Send to tradie for review
     lead.status = LeadStatus.TRADIE_REVIEW.value
 
-    patches.append(LeadPatch(
+    await emit(LeadPatch(
         type="quote_ready",
         lead_id=lead.id,
         data={
@@ -439,11 +451,17 @@ async def process_photo(
     lead: LeadSession,
     image_url: str | None = None,
     image_bytes: bytes | None = None,
+    on_patch: Callable[[LeadPatch], Awaitable[None]] | None = None,
 ) -> list[LeadPatch]:
     """Process an uploaded photo through Vision API."""
     patches: list[LeadPatch] = []
 
-    patches.append(LeadPatch(
+    async def emit(patch: LeadPatch) -> None:
+        patches.append(patch)
+        if on_patch:
+            await on_patch(patch)
+
+    await emit(LeadPatch(
         type="step_changed",
         lead_id=lead.id,
         data={"step": "analysing_photo", "message": "Analysing your photo..."},
@@ -456,7 +474,7 @@ async def process_photo(
         lead.photo_urls = lead.photo_urls + [image_url]
     lead.photo_analysis = analysis.model_dump()
 
-    patches.append(LeadPatch(
+    await emit(LeadPatch(
         type="photo_analysed",
         lead_id=lead.id,
         data={
@@ -468,3 +486,35 @@ async def process_photo(
     ))
 
     return patches
+
+
+async def enqueue_lead_processing(lead_id: str, message: str, source: str = "api") -> bool:
+    """Queue lead enrichment pipeline for async background processing."""
+    return await enqueue_job(
+        {
+            "type": "lead_enrichment",
+            "lead_id": lead_id,
+            "message": message,
+            "source": source,
+            "queued_at": datetime.now(timezone.utc).isoformat(),
+        }
+    )
+
+
+async def enqueue_photo_processing(
+    lead_id: str,
+    image_b64: str,
+    mime_type: str = "image/jpeg",
+    source: str = "api",
+) -> bool:
+    """Queue photo analysis pipeline for async background processing."""
+    return await enqueue_job(
+        {
+            "type": "photo_analysis",
+            "lead_id": lead_id,
+            "image_b64": image_b64,
+            "mime_type": mime_type,
+            "source": source,
+            "queued_at": datetime.now(timezone.utc).isoformat(),
+        }
+    )
