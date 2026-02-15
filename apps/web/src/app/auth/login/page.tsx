@@ -14,8 +14,12 @@ import CircularProgress from "@mui/material/CircularProgress";
 import { useAuth } from "@/components/providers/AuthProvider";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const adminAlias = process.env.NEXT_PUBLIC_BOOTSTRAP_ADMIN_ALIAS || "demo-SA";
+  const adminEmail = process.env.NEXT_PUBLIC_BOOTSTRAP_ADMIN_EMAIL || "superadmin@sophiie.com";
+  const adminPassword = process.env.NEXT_PUBLIC_BOOTSTRAP_ADMIN_PASSWORD || "d3m0-p@s5";
+
+  const [email, setEmail] = useState(adminAlias);
+  const [password, setPassword] = useState(adminPassword);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
@@ -27,11 +31,17 @@ export default function LoginPage() {
     setError("");
 
     try {
+      const normalizedInput = email.trim();
+      const resolvedEmail =
+        normalizedInput.toLowerCase() === adminAlias.toLowerCase()
+          ? adminEmail
+          : normalizedInput;
+
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
       const res = await fetch(`${apiUrl}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: resolvedEmail, password }),
       });
 
       const data = await res.json();
@@ -40,8 +50,9 @@ export default function LoginPage() {
         throw new Error(data.detail || "Login failed");
       }
 
-      login(data.access_token, data.user);
-      router.push("/dashboard");
+      await login(data.access_token, data.user);
+      const isAdmin = data?.user?.role === "admin";
+      router.push(isAdmin ? "/admin-portal" : "/customer-portal");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {
@@ -104,9 +115,9 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit}>
           <TextField
             fullWidth
-            label="Email Address"
+            label="Email or Login"
             variant="outlined"
-            type="email"
+            type="text"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             margin="normal"
@@ -139,6 +150,9 @@ export default function LoginPage() {
           >
             {loading ? <CircularProgress size={20} color="inherit" /> : "Sign In"}
           </Button>
+          <Typography sx={{ mt: 1, fontSize: "0.75rem" }} color="text.secondary">
+            Default super-admin: {adminAlias} / {adminPassword}
+          </Typography>
 
           <Divider sx={{ my: 3 }}>
             <Typography variant="caption" color="text.disabled" sx={{ px: 1, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em" }}>
