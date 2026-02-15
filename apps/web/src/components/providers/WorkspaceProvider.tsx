@@ -9,7 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/components/providers/AuthProvider";
 
 type ConnectionStatus = "connecting" | "connected" | "disconnected" | "error";
 type ServerStatus = "listening" | "thinking" | "updating" | "synced" | "error";
@@ -27,14 +27,28 @@ interface WorkspaceComponent {
   updatedAt: string;
 }
 
+export interface Enquiry {
+  id: string;
+  name: string;
+  phone: string;
+  subject: string;
+  summary: string;
+  status: "new" | "pending" | "responded" | "closed";
+  receivedAt: string;
+}
+
 interface WorkspaceState {
   components: WorkspaceComponent[];
+  leads: Enquiry[];
   connectionStatus: ConnectionStatus;
   serverStatus: ServerStatus;
   lastIntents: Array<Record<string, unknown>>;
   sendUtterance: (text: string, source: "voice" | "text" | "chip") => void;
   sendAction: (action: string, componentId: string, payload?: Record<string, unknown>) => void;
   requestSync: () => void;
+  refreshLeads: () => Promise<void>;
+  newLeadPush: Enquiry | null;
+  clearNewLeadPush: () => void;
 }
 
 const WorkspaceContext = createContext<WorkspaceState | null>(null);
@@ -63,11 +77,47 @@ const WS_BASE_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000";
  */
 export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   const [components, setComponents] = useState<WorkspaceComponent[]>([]);
+  const [leads, setLeads] = useState<Enquiry[]>([]);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("disconnected");
   const [serverStatus, setServerStatus] = useState<ServerStatus>("synced");
   const [lastIntents, setLastIntents] = useState<Array<Record<string, unknown>>>([]);
+  const [newLeadPush, setNewLeadPush] = useState<Enquiry | null>(null);
   
   const { token } = useAuth();
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+  const refreshLeads = useCallback(async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_URL}/api/leads`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        // Map backend LeadSession to UI Enquiry
+        const mapped = data.map((l: any) => ({
+          id: l.id,
+          name: l.customer_name || "Unknown Customer",
+          phone: l.customer_phone || "",
+          subject: l.job_type || "General Enquiry",
+          summary: l.job_description || "",
+          status: l.status === "details_collected" ? "pending" : 
+                  l.status === "confirmed" ? "responded" :
+                  l.status === "booked" ? "responded" :
+                  l.status === "rejected" ? "closed" :
+                  l.status === "cancelled" ? "closed" : "new",
+          receivedAt: new Date(l.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }));
+        setLeads(mapped);
+      }
+    } catch (err) {
+      console.error("Failed to fetch leads:", err);
+    }
+  }, [token, API_URL]);
+
+  useEffect(() => {
+    if (token) refreshLeads();
+  }, [token, refreshLeads]);
 
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -118,6 +168,19 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     } else if (type === "patch") {
       const operations = message.operations as Array<Record<string, unknown>>;
       applyPatches(operations);
+    } else if (type === "new_lead") {
+      const l = message.lead as any;
+      const mapped: Enquiry = {
+        id: l.id,
+        name: l.customerName || "Unknown Customer",
+        phone: l.customerPhone || "",
+        subject: l.jobType || "New Request",
+        summary: l.description || "",
+        status: "new",
+        receivedAt: "Just now"
+      };
+      setNewLeadPush(mapped);
+      setLeads(prev => [mapped, ...prev]);
     }
   }, [applyPatches]);
 
@@ -201,12 +264,16 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
 
   const value: WorkspaceState = {
     components,
+    leads,
     connectionStatus,
     serverStatus,
     lastIntents,
     sendUtterance,
     sendAction,
     requestSync,
+    refreshLeads,
+    newLeadPush,
+    clearNewLeadPush: () => setNewLeadPush(null),
   };
 
   return (
