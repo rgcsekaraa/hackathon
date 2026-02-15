@@ -31,6 +31,8 @@ import PersonOutline from "@mui/icons-material/PersonOutline";
 import DarkModeOutlined from "@mui/icons-material/DarkModeOutlined";
 import LightModeOutlined from "@mui/icons-material/LightModeOutlined";
 import AutoAwesomeOutlined from "@mui/icons-material/AutoAwesomeOutlined";
+import FiberManualRecord from "@mui/icons-material/FiberManualRecord";
+import WifiOffOutlined from "@mui/icons-material/WifiOffOutlined";
 
 import { useAuth } from "@/lib/auth-context";
 import { useWorkspace } from "@/components/providers/WorkspaceProvider";
@@ -57,7 +59,7 @@ export default function DashboardShell({ children }: { children?: React.ReactNod
   const isTablet = useMediaQuery(theme.breakpoints.between("sm", "md"));
   const { user, logout } = useAuth();
   const { mode, toggleMode } = useThemeMode();
-  const { activeCall, activeCaller, notifications, agentStage } = useWorkspace();
+  const { activeCall, activeCaller, notifications, agentStage, connectionStatus } = useWorkspace();
   const [tab, setTab] = useState<TabValue>("today");
   const [notifOpen, setNotifOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -216,6 +218,40 @@ export default function DashboardShell({ children }: { children?: React.ReactNod
                 </Typography>
               </Box>
             )}
+
+            {/* Connection status */}
+            {connectionStatus === "connected" ? (
+              <Chip
+                icon={<FiberManualRecord sx={{ fontSize: "8px !important", color: isDark ? "#81C995" : "#1E8E3E" }} />}
+                label="Live"
+                size="small"
+                sx={{
+                  bgcolor: isDark ? "rgba(129,201,149,0.08)" : "rgba(30,142,62,0.05)",
+                  color: isDark ? "#81C995" : "#1E8E3E",
+                  height: 24,
+                  fontSize: "0.7rem",
+                  fontWeight: 500,
+                  mr: 0.5,
+                  "& .MuiChip-icon": { ml: 0.5 },
+                  animation: "none",
+                }}
+              />
+            ) : connectionStatus === "disconnected" || connectionStatus === "error" ? (
+              <Chip
+                icon={<WifiOffOutlined sx={{ fontSize: "14px !important" }} />}
+                label="Offline"
+                size="small"
+                sx={{
+                  bgcolor: isDark ? "rgba(242,139,130,0.08)" : "rgba(217,48,37,0.05)",
+                  color: isDark ? "#F28B82" : "#D93025",
+                  height: 24,
+                  fontSize: "0.7rem",
+                  fontWeight: 500,
+                  mr: 0.5,
+                  "& .MuiChip-icon": { ml: 0.5, color: isDark ? "#F28B82" : "#D93025" },
+                }}
+              />
+            ) : null}
 
             <Typography
               variant="h6"

@@ -8,10 +8,12 @@ import Chip from "@mui/material/Chip";
 import Divider from "@mui/material/Divider";
 import { useTheme } from "@mui/material/styles";
 import AccessTime from "@mui/icons-material/AccessTime";
+import TodayOutlined from "@mui/icons-material/TodayOutlined";
 import { useAuth } from "@/lib/auth-context";
 import { useWorkspace } from "@/components/providers/WorkspaceProvider";
 import { useMemo } from "react";
 import PersonOutline from "@mui/icons-material/PersonOutline";
+import FiberManualRecord from "@mui/icons-material/FiberManualRecord";
 import { OrbitLoader } from "@/lib/orbit-ui";
 
 interface Appointment {
@@ -68,6 +70,34 @@ export default function AppointmentsView() {
     },
   };
 
+  const connectionChip = connectionStatus === "connected" ? (
+    <Chip
+      icon={<FiberManualRecord sx={{ fontSize: "8px !important", color: isDark ? "#81C995" : "#1E8E3E" }} />}
+      label="Live"
+      size="small"
+      sx={{
+        bgcolor: isDark ? "rgba(129,201,149,0.1)" : "rgba(30,142,62,0.06)",
+        color: isDark ? "#81C995" : "#1E8E3E",
+        height: 22,
+        fontSize: "0.7rem",
+        fontWeight: 500,
+        "& .MuiChip-icon": { ml: 0.5 },
+      }}
+    />
+  ) : connectionStatus === "connecting" ? (
+    <Chip
+      label="Connecting…"
+      size="small"
+      sx={{
+        bgcolor: isDark ? "rgba(253,214,99,0.1)" : "rgba(227,116,0,0.06)",
+        color: isDark ? "#FDD663" : "#E37400",
+        height: 22,
+        fontSize: "0.7rem",
+        fontWeight: 500,
+      }}
+    />
+  ) : null;
+
   if (connectionStatus === "connecting") {
     return (
       <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", py: 12 }}>
@@ -92,17 +122,19 @@ export default function AppointmentsView() {
         >
           {greeting}{user?.name ? `, ${user.name.split(" ")[0]}` : ""}
         </Typography>
-        <Typography
-          variant="h5"
-          sx={{
-            color: "text.primary",
-            mt: 0.75,
-            fontWeight: 600,
-            fontSize: { xs: "1.35rem", sm: "1.5rem" },
-          }}
-        >
-          {"Today's Appointments"}
-        </Typography>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mt: 0.75 }}>
+          <Typography
+            variant="h5"
+            sx={{
+              color: "text.primary",
+              fontWeight: 600,
+              fontSize: { xs: "1.35rem", sm: "1.5rem" },
+            }}
+          >
+            {"Today's Appointments"}
+          </Typography>
+          {connectionChip}
+        </Box>
         <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5, fontSize: "0.85rem" }}>
           {now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
           {" \u00B7 "}
@@ -113,72 +145,90 @@ export default function AppointmentsView() {
       <Divider sx={{ borderColor: "divider", mx: 2 }} />
 
       {/* List */}
-      <List disablePadding sx={{ px: 1, pt: 0.5 }}>
-        {todayAppointments.map((apt) => {
-          const sc = statusColor[apt.status];
-          return (
-            <ListItemButton
-              key={apt.id}
-              sx={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "flex-start",
-                gap: 1,
-                py: 2,
-                px: 2,
-                my: 0.5,
-                borderRadius: 2,
-                opacity: apt.status === "cancelled" ? 0.5 : 1,
-                borderLeft: 3,
-                borderColor: sc.border,
-                "&:hover": {
-                  bgcolor: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)",
-                },
-              }}
-            >
-              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-                <Typography
-                  variant="subtitle1"
-                  sx={{
-                    color: "text.primary",
-                    fontSize: "0.9rem",
-                    fontWeight: 500,
-                    textDecoration: apt.status === "cancelled" ? "line-through" : "none",
-                  }}
-                >
-                  {apt.title}
-                </Typography>
-                <Chip
-                  label={apt.status}
-                  size="small"
-                  sx={{
-                    bgcolor: sc.bg,
-                    color: sc.text,
-                    height: 24,
-                    fontSize: "0.7rem",
-                    fontWeight: 600,
-                    textTransform: "capitalize",
-                  }}
-                />
-              </Box>
-              <Box sx={{ display: "flex", gap: 2.5, flexWrap: "wrap" }}>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-                  <PersonOutline sx={{ fontSize: 16, color: "text.secondary" }} />
-                  <Typography variant="body2" sx={{ color: "text.secondary", fontSize: "0.85rem" }}>
-                    {apt.client}
+      {todayAppointments.length === 0 ? (
+        <Box sx={{ py: 8, textAlign: "center", px: 3 }}>
+          <TodayOutlined
+            sx={{
+              fontSize: 56,
+              color: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.07)",
+              mb: 2,
+            }}
+          />
+          <Typography variant="body1" sx={{ color: "text.secondary", fontWeight: 500, mb: 0.5 }}>
+            No appointments today
+          </Typography>
+          <Typography variant="body2" sx={{ color: "text.secondary", fontSize: "0.8rem", opacity: 0.7, maxWidth: 280, mx: "auto" }}>
+            When customers call in, confirmed jobs will appear here as appointments on your schedule.
+          </Typography>
+        </Box>
+      ) : (
+        <List disablePadding sx={{ px: 1, pt: 0.5 }}>
+          {todayAppointments.map((apt) => {
+            const sc = statusColor[apt.status];
+            return (
+              <ListItemButton
+                key={apt.id}
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "flex-start",
+                  gap: 1,
+                  py: 2,
+                  px: 2,
+                  my: 0.5,
+                  borderRadius: 2,
+                  opacity: apt.status === "cancelled" ? 0.5 : 1,
+                  borderLeft: 3,
+                  borderColor: sc.border,
+                  "&:hover": {
+                    bgcolor: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)",
+                  },
+                }}
+              >
+                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+                  <Typography
+                    variant="subtitle1"
+                    sx={{
+                      color: "text.primary",
+                      fontSize: "0.9rem",
+                      fontWeight: 500,
+                      textDecoration: apt.status === "cancelled" ? "line-through" : "none",
+                    }}
+                  >
+                    {apt.title}
                   </Typography>
+                  <Chip
+                    label={apt.status}
+                    size="small"
+                    sx={{
+                      bgcolor: sc.bg,
+                      color: sc.text,
+                      height: 24,
+                      fontSize: "0.7rem",
+                      fontWeight: 600,
+                      textTransform: "capitalize",
+                    }}
+                  />
                 </Box>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-                  <AccessTime sx={{ fontSize: 16, color: "text.secondary" }} />
-                  <Typography variant="body2" sx={{ color: "text.secondary", fontSize: "0.85rem" }}>
-                    {apt.time} ({apt.duration})
-                  </Typography>
+                <Box sx={{ display: "flex", gap: 2.5, flexWrap: "wrap" }}>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+                    <PersonOutline sx={{ fontSize: 16, color: "text.secondary" }} />
+                    <Typography variant="body2" sx={{ color: "text.secondary", fontSize: "0.85rem" }}>
+                      {apt.client}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+                    <AccessTime sx={{ fontSize: 16, color: "text.secondary" }} />
+                    <Typography variant="body2" sx={{ color: "text.secondary", fontSize: "0.85rem" }}>
+                      {apt.time} ({apt.duration})
+                    </Typography>
+                  </Box>
                 </Box>
-              </Box>
-            </ListItemButton>
-          );
-        })}
-      </List>
+              </ListItemButton>
+            );
+          })}
+        </List>
+      )}
     </Box>
   );
 }

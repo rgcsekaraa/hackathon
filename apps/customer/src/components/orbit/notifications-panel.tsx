@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import List from "@mui/material/List";
@@ -16,11 +15,29 @@ import WarningAmberOutlined from "@mui/icons-material/WarningAmberOutlined";
 import CheckCircleOutline from "@mui/icons-material/CheckCircleOutline";
 import Close from "@mui/icons-material/Close";
 import DoneAll from "@mui/icons-material/DoneAll";
+import NotificationsNoneOutlined from "@mui/icons-material/NotificationsNoneOutlined";
 import { useWorkspace } from "@/components/providers/WorkspaceProvider";
 
 interface NotificationsPanelProps {
   open: boolean;
   onClose: () => void;
+}
+
+function formatRelativeTime(timeStr: string): string {
+  if (!timeStr) return "";
+  // If it's already relative ("Just now", "2 min ago"), pass through
+  if (timeStr.includes("ago") || timeStr.toLowerCase() === "just now") return timeStr;
+  // Try to parse as date
+  const date = new Date(timeStr);
+  if (isNaN(date.getTime())) return timeStr;
+  const diff = Date.now() - date.getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "Just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
 }
 
 export default function NotificationsPanel({ open, onClose }: NotificationsPanelProps) {
@@ -95,9 +112,21 @@ export default function NotificationsPanel({ open, onClose }: NotificationsPanel
       {/* Notification list */}
       <List disablePadding sx={{ px: 1.5, py: 1 }}>
         {notifications.length === 0 && (
-            <Box sx={{ py: 4, textAlign: 'center' }}>
-                <Typography variant="body2" color="text.secondary">No notifications</Typography>
-            </Box>
+          <Box sx={{ py: 8, textAlign: "center" }}>
+            <NotificationsNoneOutlined
+              sx={{
+                fontSize: 52,
+                color: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.07)",
+                mb: 2,
+              }}
+            />
+            <Typography variant="body1" sx={{ color: "text.secondary", fontWeight: 500, mb: 0.5 }}>
+              All caught up
+            </Typography>
+            <Typography variant="body2" sx={{ color: "text.secondary", fontSize: "0.8rem", opacity: 0.7 }}>
+              New notifications will appear here.
+            </Typography>
+          </Box>
         )}
         {notifications.map((n, idx) => (
           <Box key={n.id}>
@@ -179,7 +208,7 @@ export default function NotificationsPanel({ open, onClose }: NotificationsPanel
                     opacity: 0.7,
                   }}
                 >
-                  {n.time}
+                  {formatRelativeTime(n.time)}
                 </Typography>
               </Box>
             </ListItemButton>

@@ -12,8 +12,10 @@ import Close from "@mui/icons-material/Close";
 import CircularProgress from "@mui/material/CircularProgress";
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
+import Button from "@mui/material/Button";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import ToggleButton from "@mui/material/ToggleButton";
+import RefreshOutlined from "@mui/icons-material/RefreshOutlined";
 import { useTheme } from "@mui/material/styles";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { useAuth } from "@/lib/auth-context";
@@ -46,7 +48,7 @@ function ActiveVoiceSession({ onClose }: { onClose: () => void }) {
                 }} />
             )}
             <Typography variant="subtitle1" sx={{ color: "text.primary", fontWeight: 600 }}>
-            {state === "listening" ? "Listening..." : "Thinking..."}
+            {state === "listening" ? "Listening…" : state === "connecting" ? "Connecting…" : state === "speaking" ? "Speaking…" : "Thinking…"}
             </Typography>
         </Box>
         <IconButton size="small" onClick={onClose} sx={{ color: "text.secondary" }}>
@@ -153,10 +155,15 @@ export default function VoiceFab() {
       setIsOpen(true);
     } catch (e) {
       console.error(e);
-      setError("Failed to connect to AI Assistant");
+      setError("Failed to connect to AI Assistant. Check your network.");
     } finally {
       setIsConnecting(false);
     }
+  };
+
+  const handleRetry = () => {
+    setError(null);
+    fetchToken(mode);
   };
 
   const handleToggle = useCallback(() => {
@@ -218,6 +225,23 @@ export default function VoiceFab() {
               </Typography>
             )}
           </Box>
+          {/* Error retry */}
+          {error && !isOpen && (
+            <Box sx={{ mb: 1.5, display: "flex", alignItems: "center", gap: 1 }}>
+              <Typography variant="body2" sx={{ color: "error.main", flex: 1, fontSize: "0.8rem" }}>
+                {error}
+              </Typography>
+              <Button
+                size="small"
+                startIcon={<RefreshOutlined sx={{ fontSize: 16 }} />}
+                onClick={handleRetry}
+                disabled={isConnecting}
+                sx={{ textTransform: "none", fontSize: "0.8rem", flexShrink: 0 }}
+              >
+                Retry
+              </Button>
+            </Box>
+          )}
           {roomToken && url && (
             <LiveKitRoom
               token={roomToken}
