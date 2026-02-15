@@ -25,45 +25,11 @@ router = APIRouter()
 
 @router.post("/signup", response_model=Token)
 async def signup(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
-    """Create a new user account and return an access token."""
-    # Check if user already exists
-    result = await db.execute(select(User).where(User.email == user_in.email))
-    if result.scalar_one_or_none():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="A user with this email already exists."
-        )
-    
-    normalized_email = user_in.email.strip().lower()
-    admin_emails = {e.strip().lower() for e in settings.admin_emails}
-    admin_emails.add(settings.bootstrap_admin_email.strip().lower())
-    is_bootstrap_admin = normalized_email in admin_emails
-
-    # Create user
-    user = User(
-        id=str(uuid.uuid4()),
-        email=normalized_email,
-        full_name=user_in.full_name,
-        hashed_password=get_password_hash(user_in.password),
-        role="admin" if is_bootstrap_admin else "member",
-        is_verified=True if is_bootstrap_admin else False,
-        verification_token=None if is_bootstrap_admin else str(uuid.uuid4()),
+    """Convert public signup to Invite-Only."""
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Public signup is disabled. Please contact support for an invite."
     )
-    db.add(user)
-    await db.commit()
-    await db.refresh(user)
-    
-    if user.verification_token:
-        logger.info(f"EMAIL VERIFICATION TOKEN FOR {user.email}: {user.verification_token}")
-        print(f"\n>>> EMAIL VERIFICATION TOKEN FOR {user.email}: {user.verification_token}\n")
-    
-    # Generate token
-    token = create_access_token(data={"sub": user.id})
-    return {
-        "access_token": token,
-        "token_type": "bearer",
-        "user": user
-    }
 
 @router.post("/login", response_model=Token)
 async def login(credentials: UserLogin, db: AsyncSession = Depends(get_db)):
@@ -129,23 +95,15 @@ async def google_login(login_data: GoogleLogin, db: AsyncSession = Depends(get_d
         user = result.scalar_one_or_none()
         
         if not user:
-            # Create new user (Auto-Verified)
-            user = User(
-                id=str(uuid.uuid4()),
-                email=email,
-                full_name=name,
-                google_id=google_id,
-                is_verified=True, # Trusted provider
-                hashed_password=None # No password for social login
+            # Only pre-registered users (onboarded by admin) can sign in
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Account not supported. Please contact support to get access."
             )
-            db.add(user)
-            await db.commit()
-            await db.refresh(user)
         else:
             # Link Google ID if not present
             if not user.google_id:
                 user.google_id = google_id
-                # user.is_verified = True # Should we auto-verify existing? Yes, trusted email.
                 if not user.is_verified:
                      user.is_verified = True
                 await db.commit()

@@ -50,16 +50,9 @@ async def google_callback(request: Request, db: AsyncSession = Depends(get_db)):
     user = result.scalar_one_or_none()
 
     if not user:
-        # Create new user for first-time SSO
-        user = User(
-            id=str(uuid.uuid4()),
-            email=user_info.email,
-            full_name=user_info.display_name or user_info.email,
-            google_id=user_info.id,
-            hashed_password=None,  # No password for SSO users
-            is_verified=True # Google already verified the email
-        )
-        db.add(user)
+        # Only pre-registered users (onboarded by admin) can sign in
+        # Redirect back to login with error
+        return RedirectResponse(f"{settings.frontend_url}/auth/login?error=account_not_supported")
     else:
         # Link existing user to Google if not linked
         if not user.google_id:

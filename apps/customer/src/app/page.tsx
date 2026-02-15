@@ -13,7 +13,7 @@ export default function RootPage() {
 
   useEffect(() => {
     if (!isLoading) {
-      router.replace(token ? "/customer-portal" : "/auth/login");
+      router.replace(token ? "/dashboard" : "/auth/login");
     }
   }, [token, isLoading, router]);
 
