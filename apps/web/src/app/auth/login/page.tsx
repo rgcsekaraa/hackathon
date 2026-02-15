@@ -3,220 +3,351 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
 import TextField from "@mui/material/TextField";
+import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
-import Alert from "@mui/material/Alert";
-import Paper from "@mui/material/Paper";
-import Link from "@mui/material/Link";
-import Divider from "@mui/material/Divider";
 import CircularProgress from "@mui/material/CircularProgress";
-import { useAuth } from "@/components/providers/AuthProvider";
+import InputAdornment from "@mui/material/InputAdornment";
+import IconButton from "@mui/material/IconButton";
+import Fade from "@mui/material/Fade";
+import Visibility from "@mui/icons-material/Visibility";
+import VisibilityOff from "@mui/icons-material/VisibilityOff";
+import DarkModeOutlined from "@mui/icons-material/DarkModeOutlined";
+import LightModeOutlined from "@mui/icons-material/LightModeOutlined";
+import MicNoneOutlined from "@mui/icons-material/MicNoneOutlined";
+import GoogleIcon from "@mui/icons-material/Google";
+import { useTheme, alpha } from "@mui/material/styles";
+import { useAuth } from "@/lib/auth-context";
+import { useThemeMode } from "@/lib/theme-context";
 
-export default function LoginPage() {
+function OrbitRings({ color }: { color: string }) {
+  const rings = [80, 124, 168, 210];
+  return (
+    <Box
+      sx={{
+        position: "relative",
+        width: 210,
+        height: 210,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      {rings.map((size, i) => (
+        <Box
+          key={size}
+          sx={{
+            position: "absolute",
+            width: size,
+            height: size,
+            borderRadius: "50%",
+            border: `1.5px solid ${alpha(color, 0.12 + i * 0.04)}`,
+            animation: `spin${i % 2 === 0 ? "" : "Reverse"} ${18 + i * 6}s linear infinite`,
+            "@keyframes spin": {
+              "0%": { transform: "rotate(0deg)" },
+              "100%": { transform: "rotate(360deg)" },
+            },
+            "@keyframes spinReverse": {
+              "0%": { transform: "rotate(360deg)" },
+              "100%": { transform: "rotate(0deg)" },
+            },
+          }}
+        >
+          <Box
+            sx={{
+              position: "absolute",
+              top: -3,
+              left: "50%",
+              ml: "-3px",
+              width: 6,
+              height: 6,
+              borderRadius: "50%",
+              bgcolor: alpha(color, 0.3 + i * 0.12),
+            }}
+          />
+        </Box>
+      ))}
+      <Box
+        sx={{
+          width: 48,
+          height: 48,
+          borderRadius: "50%",
+          bgcolor: alpha(color, 0.12),
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 1,
+        }}
+      >
+        <MicNoneOutlined sx={{ color, fontSize: 22 }} />
+      </Box>
+    </Box>
+  );
+}
+
+export default function LoginScreen() {
   const adminAlias = process.env.NEXT_PUBLIC_BOOTSTRAP_ADMIN_ALIAS || "demo-SA";
   const adminEmail = process.env.NEXT_PUBLIC_BOOTSTRAP_ADMIN_EMAIL || "superadmin@sophiie.com";
-  const adminPassword = process.env.NEXT_PUBLIC_BOOTSTRAP_ADMIN_PASSWORD || "d3m0-p@s5";
 
-  const [email, setEmail] = useState(adminAlias);
-  const [password, setPassword] = useState(adminPassword);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
   const { login } = useAuth();
+  const { toggleMode } = useThemeMode();
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
+  const primary = theme.palette.primary.main;
   const router = useRouter();
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email || !password) {
+      setError("Please fill in all fields");
+      return;
+    }
+
     setLoading(true);
     setError("");
-
     try {
       const normalizedInput = email.trim();
       const resolvedEmail =
-        normalizedInput.toLowerCase() === adminAlias.toLowerCase()
-          ? adminEmail
-          : normalizedInput;
+        normalizedInput.toLowerCase() === adminAlias.toLowerCase() ? adminEmail : normalizedInput;
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-      const res = await fetch(`${apiUrl}/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: resolvedEmail, password }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.detail || "Login failed");
+      const success = await login(resolvedEmail, password);
+      if (!success) {
+        setError("Invalid credentials");
+        return;
       }
 
-      await login(data.access_token, data.user);
-      const isAdmin = data?.user?.role === "admin";
-      router.push(isAdmin ? "/admin-portal" : "/customer-portal");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed");
+      const rawUser = localStorage.getItem("user");
+      const role = rawUser ? JSON.parse(rawUser)?.role : undefined;
+      router.push(role === "admin" ? "/admin-portal" : "/customer-portal");
+    } catch {
+      setError("Something went wrong");
     } finally {
       setLoading(false);
     }
   };
 
+  const inputSx = {
+    "& .MuiOutlinedInput-root": {
+      borderRadius: "10px",
+      bgcolor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)",
+      "& fieldset": { borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)" },
+      "&:hover fieldset": { borderColor: isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.2)" },
+      "&.Mui-focused fieldset": { borderColor: "primary.main", borderWidth: 1.5 },
+    },
+    "& .MuiInputLabel-root": { color: "text.secondary", fontSize: "0.875rem" },
+    "& .MuiInputBase-input": { color: "text.primary", fontSize: "0.875rem", py: 1.5 },
+  };
+
   return (
     <Box
       sx={{
-        height: "100vh",
+        minHeight: "100dvh",
         display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: "background.default",
+        flexDirection: "column",
+        bgcolor: "background.default",
+        position: "relative",
+        overflow: "hidden",
       }}
     >
-      <Paper
-        variant="outlined"
+      <Box sx={{ position: "absolute", top: 12, right: 12, zIndex: 10 }}>
+        <IconButton
+          onClick={toggleMode}
+          size="small"
+          aria-label={`Switch to ${isDark ? "light" : "dark"} mode`}
+          sx={{
+            color: "text.secondary",
+            bgcolor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)",
+            width: 36,
+            height: 36,
+          }}
+        >
+          {isDark ? <LightModeOutlined sx={{ fontSize: 18 }} /> : <DarkModeOutlined sx={{ fontSize: 18 }} />}
+        </IconButton>
+      </Box>
+
+      <Box
         sx={{
-          p: 4,
-          width: "100%",
-          maxWidth: 400,
-          borderRadius: "4px",
-          backgroundColor: "background.paper",
+          flex: "1 1 55%",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 3,
+          px: 3,
+          pt: { xs: 8, sm: 6 },
+          pb: 2,
+          minHeight: { xs: 320, sm: 380 },
         }}
       >
-        <Box sx={{ mb: 3, textAlign: "center" }}>
-          <Box
-            sx={{
-              width: 40,
-              height: 40,
-              borderRadius: "4px",
-              backgroundColor: "primary.main",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontWeight: 800,
-              color: "white",
-              mx: "auto",
-              mb: 2,
-            }}
-          >
-            S
+        <Fade in timeout={800}>
+          <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2.5 }}>
+            <OrbitRings color={primary} />
+
+            <Box sx={{ textAlign: "center", mt: -1 }}>
+              <Typography
+                variant="h4"
+                sx={{
+                  color: "text.primary",
+                  fontWeight: 600,
+                  fontSize: { xs: "1.6rem", sm: "2rem" },
+                  letterSpacing: "-0.02em",
+                  lineHeight: 1.2,
+                }}
+              >
+                Sophie Orbit
+              </Typography>
+              <Typography
+                variant="body1"
+                sx={{
+                  color: "text.secondary",
+                  mt: 1,
+                  fontSize: { xs: "0.85rem", sm: "0.9rem" },
+                  maxWidth: 260,
+                  mx: "auto",
+                  lineHeight: 1.5,
+                }}
+              >
+                Your voice-first workspace.
+                <br />
+                Appointments, calendar, and enquiries.
+              </Typography>
+            </Box>
           </Box>
-          <Typography variant="h5" sx={{ fontWeight: 800 }}>
-            Welcome Back
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Sign in to your account to continue
-          </Typography>
-        </Box>
+        </Fade>
+      </Box>
 
-        {error && (
-          <Alert severity="error" sx={{ mb: 3, borderRadius: "4px" }}>
-            {error}
-          </Alert>
-        )}
+      <Fade in timeout={1000}>
+        <Box
+          component="form"
+          onSubmit={handleSubmit}
+          sx={{
+            flex: "0 0 auto",
+            bgcolor: isDark ? alpha("#FFFFFF", 0.03) : "#FFFFFF",
+            borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}`,
+            borderRadius: { xs: "24px 24px 0 0", sm: "24px 24px 0 0" },
+            px: { xs: 3, sm: 4 },
+            pt: { xs: 3.5, sm: 4 },
+            pb: { xs: 4, sm: 5 },
+            maxWidth: { sm: 420 },
+            mx: "auto",
+            width: "100%",
+            display: "flex",
+            flexDirection: "column",
+            gap: 2,
+            ...(!isDark && { boxShadow: "0 -4px 32px rgba(0,0,0,0.06)" }),
+          }}
+        >
+          <Typography
+            variant="subtitle1"
+            sx={{ color: "text.primary", fontWeight: 600, fontSize: "1rem", mb: 0.5 }}
+          >
+            Sign in
+          </Typography>
 
-        <form onSubmit={handleSubmit}>
           <TextField
             fullWidth
-            label="Email or Login"
-            variant="outlined"
+            label="Email"
             type="text"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            margin="normal"
-            required
-            InputProps={{ sx: { borderRadius: "4px" } }}
+            autoComplete="email"
+            autoFocus
+            variant="outlined"
+            size="small"
+            sx={inputSx}
           />
+
           <TextField
             fullWidth
             label="Password"
-            variant="outlined"
-            type="password"
+            type={showPassword ? "text" : "password"}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            margin="normal"
-            required
-            InputProps={{ sx: { borderRadius: "4px" } }}
-          />
-          <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
-            <Link href="/auth/forgot-password" variant="body2" sx={{ fontSize: "0.75rem", fontWeight: 600, color: "primary.main", textDecoration: "none" }}>
-              Forgot Password?
-            </Link>
-          </Box>
-          <Button
-            fullWidth
-            type="submit"
-            variant="contained"
-            size="large"
-            disabled={loading}
-            sx={{ mt: 1, py: 1.2, fontWeight: 600, borderRadius: "4px", boxShadow: "none" }}
-          >
-            {loading ? <CircularProgress size={20} color="inherit" /> : "Sign In"}
-          </Button>
-          <Typography sx={{ mt: 1, fontSize: "0.75rem" }} color="text.secondary">
-            Default super-admin: {adminAlias} / {adminPassword}
-          </Typography>
-
-          <Divider sx={{ my: 3 }}>
-            <Typography variant="caption" color="text.disabled" sx={{ px: 1, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em" }}>
-              OR
-            </Typography>
-          </Divider>
-
-          <Button
-            fullWidth
+            autoComplete="current-password"
             variant="outlined"
-            size="large"
-            onClick={() => window.location.href = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'}/auth/google/login`}
+            size="small"
+            slotProps={{
+              input: {
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={() => setShowPassword(!showPassword)}
+                      edge="end"
+                      size="small"
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                      sx={{ color: "text.secondary" }}
+                    >
+                      {showPassword ? <VisibilityOff sx={{ fontSize: 18 }} /> : <Visibility sx={{ fontSize: 18 }} />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              },
+            }}
+            sx={inputSx}
+          />
+
+          {error && (
+            <Typography variant="body2" sx={{ color: "error.main", fontSize: "0.8rem" }}>
+              {error}
+            </Typography>
+          )}
+
+          <Button
+            type="submit"
+            fullWidth
+            variant="contained"
+            disabled={loading}
+            disableElevation
             sx={{
-              py: 1.5,
-              borderRadius: "4px",
+              py: 1.4,
+              mt: 0.5,
+              borderRadius: "12px",
+              bgcolor: "primary.main",
+              color: isDark ? "#0E0E0E" : "#FFFFFF",
+              fontWeight: 600,
+              fontSize: "0.875rem",
               textTransform: "none",
-              fontWeight: 700,
-              fontSize: "1rem",
-              color: "text.primary",
-              borderColor: "divider",
-              bgcolor: "background.paper",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 1.5,
-              boxShadow: "none",
-              "&:hover": {
-                borderColor: "text.primary",
-                bgcolor: "action.hover",
-                boxShadow: "none",
+              "&:hover": { bgcolor: "primary.dark" },
+              "&.Mui-disabled": {
+                bgcolor: alpha(primary, 0.35),
+                color: isDark ? "rgba(14,14,14,0.5)" : "rgba(255,255,255,0.5)",
               },
             }}
           >
-            <svg width="18" height="18" viewBox="0 0 18 18">
-              <path
-                fill="#4285F4"
-                d="M17.64 9.2c0-.63-.06-1.25-.16-1.84H9v3.49h4.84a4.14 4.14 0 0 1-1.8 2.71v2.26h2.91c1.71-1.58 2.69-3.91 2.69-6.62z"
-              />
-              <path
-                fill="#34A853"
-                d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.91-2.26c-.8.54-1.83.86-3.05.86-2.34 0-4.33-1.58-5.04-3.71H.95v2.33C2.43 15.89 5.5 18 9 18z"
-              />
-              <path
-                fill="#FBBC05"
-                d="M3.96 10.71a5.41 5.41 0 0 1 0-3.42V4.96H.95a8.99 8.99 0 0 0 0 8.08l3.01-2.33z"
-              />
-              <path
-                fill="#EA4335"
-                d="M9 3.58c1.32 0 2.5.45 3.44 1.35L15 2.45C13.46.99 11.42 0 9 0 5.5 0 2.43 2.11.95 5.12l3.01 2.33c.71-2.13 2.7-3.71 5.04-3.71z"
-              />
-            </svg>
+            {loading ? <CircularProgress size={20} sx={{ color: isDark ? "#0E0E0E" : "#FFF" }} /> : "Continue"}
+          </Button>
+
+          <Button
+            fullWidth
+            variant="outlined"
+            onClick={() => {
+              window.location.href = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/auth/google/login`;
+            }}
+            startIcon={<GoogleIcon />}
+            sx={{
+              py: 1.2,
+              borderRadius: "12px",
+              textTransform: "none",
+              fontWeight: 600,
+            }}
+          >
             Continue with Google
           </Button>
-        </form>
 
-        <Box sx={{ mt: 3, textAlign: "center" }}>
-          <Typography variant="body2">
-            Don&apos;t have an account?{" "}
-            <Link href="/auth/signup" fontWeight={600} underline="hover">
-              Sign Up
-            </Link>
+          <Typography
+            variant="body2"
+            sx={{ color: "text.secondary", textAlign: "center", fontSize: "0.72rem", mt: 0.5, opacity: 0.7 }}
+          >
+            Enter any valid account. Admin alias: demo-SA
           </Typography>
         </Box>
-      </Paper>
+      </Fade>
     </Box>
   );
 }

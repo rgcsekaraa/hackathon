@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Fab from "@mui/material/Fab";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
@@ -12,58 +12,126 @@ import MicOutlined from "@mui/icons-material/MicOutlined";
 import Close from "@mui/icons-material/Close";
 import { useTheme } from "@mui/material/styles";
 import useMediaQuery from "@mui/material/useMediaQuery";
-import { useSpeechRecognition } from "@/lib/speech";
-import { useWorkspace } from "@/components/providers/WorkspaceProvider";
+import { useAuth } from "@/lib/auth-context";
+
+import {
+  LiveKitRoom,
+  RoomAudioRenderer,
+  BarVisualizer,
+  useVoiceAssistant,
+  useConnectionState,
+} from "@livekit/components-react";
+import { ConnectionState } from "livekit-client";
+import "@livekit/components-styles";
+
+// Inner component to handle voice assistant state
+function ActiveVoiceSession({ onClose }: { onClose: () => void }) {
+  const theme = useTheme();
+  const { state, audioTrack, agentTranscriptions } = useVoiceAssistant();
+  const isDark = theme.palette.mode === "dark";
+
+  const lastTranscript = agentTranscriptions[agentTranscriptions.length - 1]?.text ?? "Listening...";
+
+  return (
+    <Box sx={{ width: "100%" }}>
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
+        <Typography variant="subtitle1" sx={{ color: "text.primary", fontWeight: 500 }}>
+          {state === "listening" ? "Sophie is listening..." : "Sophie is thinking..."}
+        </Typography>
+        <IconButton size="small" onClick={onClose} sx={{ color: "text.secondary" }}>
+          <Close fontSize="small" />
+        </IconButton>
+      </Box>
+
+      {/* Visualizer */}
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: 64,
+          mb: 2,
+          bgcolor: isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)",
+          borderRadius: 2,
+        }}
+      >
+        <BarVisualizer
+          state={state}
+          barCount={7}
+          trackRef={audioTrack}
+          style={{ height: "40px", gap: "4px" }}
+          options={{ minHeight: 10, maxHeight: 40 }}
+        />
+      </Box>
+
+      {/* Transcript */}
+      <Box
+        sx={{
+          minHeight: 40,
+          bgcolor: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)",
+          borderRadius: 2,
+          px: 2,
+          py: 1.5,
+        }}
+      >
+        <Typography
+          variant="body1"
+          sx={{
+            color: "text.primary",
+            fontSize: "0.875rem",
+            lineHeight: 1.6,
+          }}
+        >
+          {lastTranscript}
+        </Typography>
+      </Box>
+    </Box>
+  );
+}
 
 export default function VoiceFab() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-  const { sendUtterance } = useWorkspace();
-  const [pulseScale, setPulseScale] = useState(1);
+  const { token: authToken } = useAuth(); // Auth token for API
+  
+  const [isOpen, setIsOpen] = useState(false);
+  const [roomToken, setRoomToken] = useState("");
+  const [url, setUrl] = useState("");
+  const [isConnecting, setIsConnecting] = useState(false);
 
-  const {
-    isListening,
-    transcript,
-    startListening,
-    stopListening
-  } = useSpeechRecognition({
-    onResult: (text, isFinal) => {
-      if (isFinal && text) {
-        sendUtterance(text, "voice");
-        setTimeout(() => stopListening(), 1000);
-      }
+  const fetchToken = async () => {
+    try {
+      setIsConnecting(true);
+      const res = await fetch("/api/voice/token", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${authToken ?? ""}`,
+        },
+      });
+      const data = await res.json();
+      setRoomToken(data.token);
+      setUrl(data.url);
+      setIsOpen(true);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsConnecting(false);
     }
-  });
-
-  // Pulse animation
-  useEffect(() => {
-    if (!isListening) {
-      setPulseScale(1);
-      return;
-    }
-    let frame: number;
-    let start: number;
-    const animate = (ts: number) => {
-      if (!start) start = ts;
-      const elapsed = (ts - start) / 1000;
-      setPulseScale(1 + 0.15 * Math.sin(elapsed * 3));
-      frame = requestAnimationFrame(animate);
-    };
-    frame = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(frame);
-  }, [isListening]);
+  };
 
   const handleToggle = useCallback(() => {
-    if (isListening) {
-      stopListening();
+    if (isOpen) {
+      setIsOpen(false);
+      setRoomToken(""); 
     } else {
-      startListening();
+      fetchToken();
     }
-  }, [isListening, startListening, stopListening]);
+  }, [isOpen, authToken]);
 
   const handleClose = useCallback(() => {
-    stopListening();
-  }, [stopListening]);
+    setIsOpen(false);
+    setRoomToken("");
+  }, []);
 
   const isDark = theme.palette.mode === "dark";
   const fabBg = isDark ? "#8AB4F8" : "#1A73E8";
@@ -71,8 +139,7 @@ export default function VoiceFab() {
 
   return (
     <>
-      {/* Listening sheet */}
-      <Slide direction="up" in={isListening} mountOnEnter unmountOnExit>
+      <Slide direction="up" in={isOpen} mountOnEnter unmountOnExit>
         <Paper
           elevation={0}
           sx={{
@@ -90,77 +157,23 @@ export default function VoiceFab() {
             pb: isMobile ? 4 : 3,
           }}
         >
-          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
-            <Typography variant="subtitle1" sx={{ color: "text.primary", fontWeight: 500 }}>
-              Sophie is listening...
-            </Typography>
-            <IconButton
-              size="small"
-              onClick={handleClose}
-              aria-label="Stop listening"
-              sx={{ color: "text.secondary" }}
+          {roomToken && url && (
+            <LiveKitRoom
+              token={roomToken}
+              serverUrl={url}
+              connect={true}
+              audio={true}
+              video={false}
+              onDisconnected={handleClose}
+              data-lk-theme="default"
             >
-              <Close fontSize="small" />
-            </IconButton>
-          </Box>
-
-          {/* Visualizer */}
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 0.5,
-              height: 48,
-              mb: 2,
-            }}
-          >
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Box
-                key={i}
-                sx={{
-                  width: 4,
-                  borderRadius: 2,
-                  bgcolor: "primary.main",
-                  opacity: isListening ? 0.8 : 0.3,
-                  height: isListening ? `${12 + Math.random() * 28}px` : 12,
-                  transition: "height 0.15s ease",
-                  animation: isListening ? `wave 0.6s ease-in-out ${i * 0.08}s infinite alternate` : "none",
-                  "@keyframes wave": {
-                    "0%": { height: 12 },
-                    "100%": { height: 40 },
-                  },
-                }}
-              />
-            ))}
-          </Box>
-
-          {/* Transcript */}
-          <Box
-            sx={{
-              minHeight: 40,
-              bgcolor: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)",
-              borderRadius: 2,
-              px: 2,
-              py: 1.5,
-            }}
-          >
-            <Typography
-              variant="body1"
-              sx={{
-                color: transcript ? "text.primary" : "text.secondary",
-                fontStyle: transcript ? "normal" : "italic",
-                fontSize: "0.875rem",
-                lineHeight: 1.6,
-              }}
-            >
-              {transcript || "Speak now..."}
-            </Typography>
-          </Box>
+              <ActiveVoiceSession onClose={handleClose} />
+              <RoomAudioRenderer />
+            </LiveKitRoom>
+          )}
         </Paper>
       </Slide>
 
-      {/* Floating voice button */}
       <Box
         sx={{
           position: "fixed",
@@ -169,47 +182,28 @@ export default function VoiceFab() {
           zIndex: 1301,
         }}
       >
-        {/* Pulse ring */}
-        {isListening && (
-          <Box
-            sx={{
-              position: "absolute",
-              top: "50%",
-              left: "50%",
-              width: 56,
-              height: 56,
-              borderRadius: "50%",
-              bgcolor: "primary.main",
-              opacity: 0.2,
-              transform: `translate(-50%, -50%) scale(${pulseScale + 0.3})`,
-              transition: "transform 0.1s ease",
-              pointerEvents: "none",
-            }}
-          />
-        )}
         <Fab
           onClick={handleToggle}
-          aria-label={isListening ? "Stop voice input" : "Start voice input"}
+          disabled={isConnecting}
+          aria-label={isOpen ? "Stop voice input" : "Start voice input"}
           sx={{
             width: 56,
             height: 56,
-            bgcolor: isListening ? fabBg : fabBg,
+            bgcolor: isOpen ? fabBg : fabBg,
             color: fabColor,
-            transform: `scale(${isListening ? pulseScale : 1})`,
             transition: "transform 0.1s ease, box-shadow 0.2s ease",
             "&:hover": {
               bgcolor: isDark ? "#AECBFA" : "#4285F4",
             },
           }}
         >
-          {isListening ? (
+          {isOpen ? (
             <MicOutlined sx={{ fontSize: 26 }} />
           ) : (
             <MicNoneOutlined sx={{ fontSize: 26 }} />
           )}
         </Fab>
       </Box>
-
     </>
   );
 }

@@ -27,6 +27,7 @@ from db.session import get_db_context
 from core.deps import get_current_user
 from models.user import User
 from services.voice.livekit_rooms import generate_participant_token
+
 from core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -520,6 +521,8 @@ async def get_livekit_token(
     }
 
 
+
+
 @router.get("/voice/voices")
 async def get_voices():
     """List available ElevenLabs voices."""
@@ -540,10 +543,7 @@ async def voice_pipeline_status():
             "configured": bool(settings.elevenlabs_api_key),
             "voice_id": settings.elevenlabs_voice_id,
         },
-        "livekit": {
-            "configured": bool(settings.livekit_api_key and settings.livekit_api_secret),
-            "url": settings.livekit_url,
-        },
+
         "twilio": {
             "configured": bool(settings.twilio_account_sid),
         },

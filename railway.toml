@@ -1,10 +1,29 @@
 [build]
-builder = "DOCKERFILE"
-dockerfilePath = "Dockerfile"
+builder = "docker"
 
 [deploy]
-startCommand = "start-prod.sh"
-healthcheckPath = "/health"
-healthcheckTimeout = 30
-restartPolicyType = "ON_FAILURE"
-restartPolicyMaxRetries = 3
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10
+
+[[services]]
+name = "api"
+root = "apps/api"
+dockerfile = "Dockerfile"
+[services.env]
+PORT = "8000"
+
+[[services]]
+name = "worker"
+root = "apps/api"
+dockerfile = "Dockerfile"
+startCommand = "python services/voice/livekit_agent.py prod"
+[services.env]
+# Worker doesn't need a port exposed usually, but Railway might check health
+# Ensure all env vars like LIVEKIT_URL are set in the project settings
+
+[[services]]
+name = "web"
+root = "apps/web"
+dockerfile = "Dockerfile"
+[services.env]
+PORT = "3000"

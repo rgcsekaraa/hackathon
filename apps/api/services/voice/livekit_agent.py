@@ -221,8 +221,7 @@ async def entrypoint(ctx: JobContext):
     )
 
     # 6. Start Agent
-    # agent.start(ctx.room) is not needed/available in this version of Agent.
-    # The session is managed by the worker context.
+    agent.start(ctx.room, participant=ctx.job.participant)
 
     # Send initial greeting
     greeting = f"G'day! Thanks for calling {tradie_ctx.get('business_name', settings.default_business_name)}. How can I help you today?"
