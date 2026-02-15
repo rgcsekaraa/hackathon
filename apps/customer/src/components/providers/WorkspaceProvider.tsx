@@ -35,11 +35,22 @@ export interface Enquiry {
   summary: string;
   status: "new" | "pending" | "responded" | "closed";
   receivedAt: string;
+  rawCreatedAt?: string;
+}
+
+export interface Notification {
+  id: string;
+  title: string;
+  body: string;
+  time: string;
+  read: boolean;
+  type: "info" | "warning" | "success";
 }
 
 interface WorkspaceState {
   components: WorkspaceComponent[];
   leads: Enquiry[];
+  notifications: Notification[]; // Derived from leads
   connectionStatus: ConnectionStatus;
   serverStatus: ServerStatus;
   lastIntents: Array<Record<string, unknown>>;
@@ -49,6 +60,10 @@ interface WorkspaceState {
   refreshLeads: () => Promise<void>;
   newLeadPush: Enquiry | null;
   clearNewLeadPush: () => void;
+  markNotificationRead: (id: string) => void;
+  markAllNotificationsRead: () => void;
+  activeCall: boolean;
+  activeCaller: string | null;
 }
 
 const WorkspaceContext = createContext<WorkspaceState | null>(null);
@@ -78,6 +93,9 @@ const WS_BASE_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000";
 export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   const [components, setComponents] = useState<WorkspaceComponent[]>([]);
   const [leads, setLeads] = useState<Enquiry[]>([]);
+  // We'll manage read state locally for now since backend doesn't exist
+  const [readNotificationIds, setReadNotificationIds] = useState<Set<string>>(new Set());
+  
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("disconnected");
   const [serverStatus, setServerStatus] = useState<ServerStatus>("synced");
   const [lastIntents, setLastIntents] = useState<Array<Record<string, unknown>>>([]);
@@ -106,7 +124,8 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
                   l.status === "booked" ? "responded" :
                   l.status === "rejected" ? "closed" :
                   l.status === "cancelled" ? "closed" : "new",
-          receivedAt: new Date(l.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          receivedAt: new Date(l.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          rawCreatedAt: l.created_at // Keep for sorting if needed
         }));
         setLeads(mapped);
       }
@@ -118,6 +137,43 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   useEffect(() => {
     if (token) refreshLeads();
   }, [token, refreshLeads]);
+
+  // Derive notifications from leads
+  const notifications: Notification[] = leads.map(lead => {
+    let title = "New enquiry";
+    let body = `${lead.name}: ${lead.subject}`;
+    let type: "info" | "success" | "warning" = "info";
+
+    if (lead.status === "responded") {
+        title = "Quote sent";
+        type = "success";
+    } else if (lead.status === "closed") {
+        title = "Enquiry closed";
+        type = "warning";
+    }
+
+    return {
+      id: `notif-${lead.id}`,
+      title,
+      body,
+      time: lead.receivedAt,
+      read: readNotificationIds.has(`notif-${lead.id}`),
+      type
+    };
+  });
+
+  const markNotificationRead = useCallback((id: string) => {
+    setReadNotificationIds(prev => {
+        const next = new Set(prev);
+        next.add(id);
+        return next;
+    });
+  }, []);
+
+  const markAllNotificationsRead = useCallback(() => {
+    const allIds = notifications.map(n => n.id);
+    setReadNotificationIds(new Set(allIds));
+  }, [notifications]);
 
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -158,6 +214,9 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     });
   }, []);
 
+  const [activeCall, setActiveCall] = useState(false);
+  const [activeCaller, setActiveCaller] = useState<string | null>(null);
+
   const handleServerMessage = useCallback((message: Record<string, unknown>) => {
     const type = message.type as string;
 
@@ -179,8 +238,20 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
         status: "new",
         receivedAt: "Just now"
       };
+      // Populate newLeadPush for the UI alert
       setNewLeadPush(mapped);
+      // Add to list immediately
       setLeads(prev => [mapped, ...prev]);
+    } else if (type === "call_status") {
+        const status = message.status as string;
+        const caller = message.caller as string;
+        if (status === "started") {
+            setActiveCall(true);
+            setActiveCaller(caller);
+        } else {
+            setActiveCall(false);
+            setActiveCaller(null);
+        }
     }
   }, [applyPatches]);
 
@@ -190,13 +261,10 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     if (wsRef.current?.readyState === WebSocket.OPEN || !token) return;
 
     setConnectionStatus("connecting");
-    const ws = new WebSocket(`${WS_BASE_URL}/ws/session?token=${token}`);
+    const ws = new WebSocket(`${WS_BASE_URL}/ws/leads?token=${token}`);
 
     ws.onopen = () => {
       setConnectionStatus("connected");
-
-      // Request full state sync on connect
-      ws.send(JSON.stringify({ type: "sync_request" }));
     };
 
     ws.onmessage = (event: MessageEvent) => {
@@ -210,7 +278,6 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
 
     ws.onclose = () => {
       setConnectionStatus("disconnected");
-      // Auto-reconnect after 2 seconds
       reconnectTimerRef.current = setTimeout(() => connectRef.current(), 2000);
     };
 
@@ -265,6 +332,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   const value: WorkspaceState = {
     components,
     leads,
+    notifications,
     connectionStatus,
     serverStatus,
     lastIntents,
@@ -274,6 +342,10 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     refreshLeads,
     newLeadPush,
     clearNewLeadPush: () => setNewLeadPush(null),
+    markNotificationRead,
+    markAllNotificationsRead,
+    activeCall,
+    activeCaller,
   };
 
   return (

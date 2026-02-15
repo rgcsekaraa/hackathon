@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
@@ -30,11 +30,10 @@ import NotificationsActiveOutlined from "@mui/icons-material/NotificationsActive
 import AutoAwesomeOutlined from "@mui/icons-material/AutoAwesomeOutlined";
 
 import {
-  type IncomingEnquiryPush,
   type ChargeLineItem,
-  sampleIncomingEnquiry,
-  sampleIncomingEnquiry2,
 } from "@/lib/mock-data";
+import { useWorkspace } from "@/components/providers/WorkspaceProvider";
+import { type IncomingEnquiryPush } from "@/lib/mock-data";
 
 const SlideUp = React.forwardRef(function SlideUp(
   props: TransitionProps & { children: React.ReactElement },
@@ -557,68 +556,70 @@ function PushBanner({ data, onTap, onDismiss }: PushBannerProps) {
 
 // --- Orchestrator component ---
 
-const PUSH_QUEUE = [sampleIncomingEnquiry, sampleIncomingEnquiry2];
-
 export default function EnquiryPushSystem() {
-  const [bannerData, setBannerData] = useState<IncomingEnquiryPush | null>(null);
+  const { newLeadPush, clearNewLeadPush } = useWorkspace();
   const [modalOpen, setModalOpen] = useState(false);
   const [modalData, setModalData] = useState<IncomingEnquiryPush | null>(null);
-  const [pushIndex, setPushIndex] = useState(0);
-  const [approved, setApproved] = useState<string[]>([]);
 
-  // Simulate an incoming push after 5s, then another after approving the first
-  useEffect(() => {
-    if (pushIndex >= PUSH_QUEUE.length) return;
-    if (bannerData || modalOpen) return; // don't stack
-
-    const timer = setTimeout(() => {
-      setBannerData(PUSH_QUEUE[pushIndex]);
-    }, pushIndex === 0 ? 5000 : 8000);
-
-    return () => clearTimeout(timer);
-  }, [pushIndex, bannerData, modalOpen]);
+  // Map backend Enquiry to UI IncomingEnquiryPush for the modal
+  const pushData = useMemo<IncomingEnquiryPush | null>(() => {
+    if (!newLeadPush) return null;
+    return {
+        id: newLeadPush.id,
+        customerName: newLeadPush.name,
+        customerPhone: newLeadPush.phone,
+        requestSummary: newLeadPush.summary,
+        category: newLeadPush.subject,
+        location: "Unknown Location", // Backend doesn't send this yet
+        distanceKm: 0,
+        charges: [], // Backend doesn't send this via simple push yet
+        totalEstimate: 0,
+        suggestedTime: "ASAP",
+        suggestedDate: "Today"
+    };
+  }, [newLeadPush]);
 
   const handleTapBanner = useCallback(() => {
-    setModalData(bannerData);
-    setBannerData(null);
-    setModalOpen(true);
-  }, [bannerData]);
+    if (pushData) {
+        setModalData(pushData);
+        clearNewLeadPush(); // Clear from banner, open in modal
+        setModalOpen(true);
+    }
+  }, [pushData, clearNewLeadPush]);
 
   const handleDismissBanner = useCallback(() => {
-    setBannerData(null);
-    setPushIndex((p) => p + 1);
-  }, []);
+    clearNewLeadPush();
+  }, [clearNewLeadPush]);
 
   const handleCloseModal = useCallback(() => {
     setModalOpen(false);
     setModalData(null);
-    setPushIndex((p) => p + 1);
   }, []);
 
   const handleApprove = useCallback(
     (data: IncomingEnquiryPush) => {
-      setApproved((prev) => [...prev, data.id]);
+      // TODO: Send approval to backend via sendAction
+      console.log("Approved quote:", data);
       setModalOpen(false);
       setModalData(null);
-      setPushIndex((p) => p + 1);
     },
     []
   );
 
   // Auto-dismiss banner after 10s if not tapped
   useEffect(() => {
-    if (!bannerData) return;
+    if (!pushData) return;
     const timer = setTimeout(() => {
       handleTapBanner(); // auto-open modal instead of dismissing
     }, 10000);
     return () => clearTimeout(timer);
-  }, [bannerData, handleTapBanner]);
+  }, [pushData, handleTapBanner]);
 
   return (
     <>
-      {bannerData && (
+      {pushData && (
         <PushBanner
-          data={bannerData}
+          data={pushData}
           onTap={handleTapBanner}
           onDismiss={handleDismissBanner}
         />

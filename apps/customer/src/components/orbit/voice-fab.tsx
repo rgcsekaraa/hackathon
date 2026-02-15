@@ -102,7 +102,8 @@ export default function VoiceFab() {
   const fetchToken = async () => {
     try {
       setIsConnecting(true);
-      const res = await fetch("/api/voice/token", {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const res = await fetch(`${apiUrl}/api/voice/token`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${authToken ?? ""}`,

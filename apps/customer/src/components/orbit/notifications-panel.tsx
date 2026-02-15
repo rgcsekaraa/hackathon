@@ -16,7 +16,7 @@ import WarningAmberOutlined from "@mui/icons-material/WarningAmberOutlined";
 import CheckCircleOutline from "@mui/icons-material/CheckCircleOutline";
 import Close from "@mui/icons-material/Close";
 import DoneAll from "@mui/icons-material/DoneAll";
-import { notifications as initialNotifications, type Notification } from "@/lib/mock-data";
+import { useWorkspace } from "@/components/providers/WorkspaceProvider";
 
 interface NotificationsPanelProps {
   open: boolean;
@@ -27,13 +27,9 @@ export default function NotificationsPanel({ open, onClose }: NotificationsPanel
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-  const [items, setItems] = useState<Notification[]>(initialNotifications);
+  const { notifications, markNotificationRead, markAllNotificationsRead } = useWorkspace();
 
-  const markAllRead = () => {
-    setItems((prev) => prev.map((n) => ({ ...n, read: true })));
-  };
-
-  const unreadCount = items.filter((n) => !n.read).length;
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
   const iconMap: Record<string, React.ReactNode> = {
     info: <InfoOutlined sx={{ color: "info.main", fontSize: 22 }} />,
@@ -83,7 +79,7 @@ export default function NotificationsPanel({ open, onClose }: NotificationsPanel
           {unreadCount > 0 && (
             <IconButton
               size="small"
-              onClick={markAllRead}
+              onClick={markAllNotificationsRead}
               aria-label="Mark all as read"
               sx={{ color: "primary.main" }}
             >
@@ -98,7 +94,12 @@ export default function NotificationsPanel({ open, onClose }: NotificationsPanel
 
       {/* Notification list */}
       <List disablePadding sx={{ px: 1.5, py: 1 }}>
-        {items.map((n, idx) => (
+        {notifications.length === 0 && (
+            <Box sx={{ py: 4, textAlign: 'center' }}>
+                <Typography variant="body2" color="text.secondary">No notifications</Typography>
+            </Box>
+        )}
+        {notifications.map((n, idx) => (
           <Box key={n.id}>
             <ListItemButton
               sx={{
@@ -108,12 +109,12 @@ export default function NotificationsPanel({ open, onClose }: NotificationsPanel
                 py: 2,
                 px: 2,
                 borderRadius: 2,
-                bgcolor: !n.read ? bgMap[n.type] : "transparent",
+                bgcolor: !n.read && n.type ? bgMap[n.type] : "transparent",
                 "&:hover": {
                   bgcolor: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)",
                 },
               }}
-              onClick={() => setItems((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)))}
+              onClick={() => markNotificationRead(n.id)}
             >
               {/* Icon */}
               <Box
@@ -182,7 +183,7 @@ export default function NotificationsPanel({ open, onClose }: NotificationsPanel
                 </Typography>
               </Box>
             </ListItemButton>
-            {idx < items.length - 1 && (
+            {idx < notifications.length - 1 && (
               <Divider sx={{ borderColor: "divider", mx: 2, my: 0.5 }} />
             )}
           </Box>

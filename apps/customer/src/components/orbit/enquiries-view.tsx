@@ -16,9 +16,9 @@ import PhoneOutlined from "@mui/icons-material/PhoneOutlined";
 import ExpandMore from "@mui/icons-material/ExpandMore";
 import ExpandLess from "@mui/icons-material/ExpandLess";
 import { FiberManualRecord } from "@mui/icons-material";
-import { useWorkspace } from "@/components/providers/WorkspaceProvider";
-import { type Enquiry } from "@/lib/mock-data";
+import { useWorkspace, type Enquiry } from "@/components/providers/WorkspaceProvider";
 import { OrbitLoader } from "@/lib/orbit-ui";
+import { useAuth } from "@/lib/auth-context";
 
 type FilterTab = "all" | "new" | "pending" | "responded" | "closed";
 
@@ -52,9 +52,34 @@ function EnquiryItem({ item }: { item: Enquiry }) {
 
   const cfg = statusConfig[item.status];
 
-  const handleCall = (e: React.MouseEvent) => {
+  const { token, user } = useAuth(); // Need token to call API
+
+  const handleCall = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    window.open(`tel:${item.phone.replace(/\s/g, "")}`, "_self");
+    // window.open(`tel:${item.phone.replace(/\s/g, "")}`, "_self");
+    if (!token) return;
+
+    try {
+        const res = await fetch("/api/voice/outbound", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                customer_phone: item.phone,
+                customer_enquiry_id: item.id
+            })
+        });
+        if (res.ok) {
+            alert("Calling you now... when you answer, we'll connect the customer.");
+        } else {
+            alert("Failed to initiate call.");
+        }
+    } catch (err) {
+        console.error("Call failed", err);
+        alert("Error starting call.");
+    }
   };
 
   return (
