@@ -24,13 +24,27 @@ import Animated, {
   FadeInUp
 } from "react-native-reanimated";
 import { useAuth } from "../context/AuthProvider";
+import * as WebBrowser from "expo-web-browser";
+import * as Google from "expo-auth-session/providers/google";
+import { Alert } from "react-native";
+import Constants from "expo-constants";
+
+WebBrowser.maybeCompleteAuthSession();
 
 const { width } = Dimensions.get("window");
 
 export default function LoginScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { signIn } = useAuth();
+  const { signIn, signInWithGoogle } = useAuth();
+  
+  const googleWebClientId =
+    (Constants.expoConfig?.extra?.googleWebClientId as string | undefined) ?? "";
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    webClientId: googleWebClientId,
+    // androidClientId: "...",
+    // iosClientId: "...",
+  });
 
   const [email, setEmail] = useState("demo@example.com");
   const [password, setPassword] = useState("demo123");
@@ -53,6 +67,27 @@ export default function LoginScreen() {
     } finally {
       setLoading(false);
     }
+  };
+
+  useEffect(() => {
+    if (response?.type === "success") {
+      const { id_token } = response.params;
+      if (id_token) {
+        setLoading(true);
+        signInWithGoogle(id_token)
+          .catch((err) => setError(err.message || "Google Login Failed"))
+          .finally(() => setLoading(false));
+      }
+    }
+  }, [response]);
+  
+  const handleForgotPassword = () => {
+      Alert.alert(
+          "Reset Password",
+          "Please check your email for instructions to reset your password. (Mock Only)",
+          [{ text: "OK" }]
+      );
+      // Ideally call API here
   };
 
   return (
@@ -149,7 +184,30 @@ export default function LoginScreen() {
               </LinearGradient>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.forgotButton}>
+
+            {/* Google Sign In Button */}
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => {
+                if (!googleWebClientId) {
+                  Alert.alert("Google Sign-In not configured", "Set extra.googleWebClientId in app config.");
+                  return;
+                }
+                promptAsync();
+              }}
+              disabled={!request || loading || !googleWebClientId}
+              style={[styles.buttonContainer, { marginTop: 8 }]}
+            >
+              <View style={[styles.button, { backgroundColor: "white" }]}>
+                 {/* Simple Google Icon (Text for now or Ionicons) */}
+                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <Ionicons name="logo-google" size={20} color="black" />
+                    <Text style={[styles.buttonText, { color: "black" }]}>Sign in with Google</Text>
+                 </View>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.forgotButton} onPress={handleForgotPassword}>
                <Text style={styles.forgotText}>Forgot password?</Text>
             </TouchableOpacity>
           </View>

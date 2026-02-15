@@ -21,6 +21,7 @@ interface AuthState {
   token: string | null;
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
+  signInWithGoogle: (idToken: string) => Promise<void>;
   signOut: () => void;
 }
 
@@ -88,6 +89,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const signInWithGoogle = useCallback(async (idToken: string) => {
+    try {
+      const res = await fetch(`${API_URL}/auth/google`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id_token: idToken }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Google Sign In failed");
+      }
+
+      const data = await res.json();
+      setToken(data.access_token);
+      setUser(data.user);
+    } catch (err) {
+      console.error(err);
+      throw err;
+    }
+  }, []);
+
   const signOut = useCallback(() => {
     setUser(null);
     setToken(null);
@@ -100,6 +122,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         token,
         isLoading,
         signIn,
+        signInWithGoogle,
         signOut,
       }}
     >

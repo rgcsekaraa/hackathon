@@ -7,7 +7,7 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "scheme": "sophiiespace",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -37,7 +37,8 @@
     },
     "plugins": [
       "expo-router",
-      "@react-native-voice/voice"
+      "@react-native-voice/voice",
+      "expo-web-browser"
     ]
   }
 }
