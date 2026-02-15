@@ -83,7 +83,8 @@ sequenceDiagram
 
     Note over C, AI: Initial Engagement
     C->>API: Calls Tradie Number
-    API<->>AI: "G'day! I can help. Can you send a photo of the tap?"
+    API->>AI: Initiate "Live AI Session"
+    AI->>C: "G'day! I can help. Can you send a photo of the tap?"
     API->>C: Sends SMS with Upload Link (via Twilio)
 
     Note over C, G: Multimodal Analysis
