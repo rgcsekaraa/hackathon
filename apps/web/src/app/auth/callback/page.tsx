@@ -3,7 +3,7 @@
 import { useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Box, Typography, CircularProgress } from "@mui/material";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/components/providers/AuthProvider";
 
 function CallbackHandler() {
   const router = useRouter();

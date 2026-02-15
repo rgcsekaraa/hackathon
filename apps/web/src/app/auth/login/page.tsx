@@ -11,7 +11,7 @@ import Paper from "@mui/material/Paper";
 import Link from "@mui/material/Link";
 import Divider from "@mui/material/Divider";
 import CircularProgress from "@mui/material/CircularProgress";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/components/providers/AuthProvider";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");

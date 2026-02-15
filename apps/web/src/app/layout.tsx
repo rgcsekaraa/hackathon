@@ -10,8 +10,6 @@ export const metadata: Metadata = {
   title: "Sophiie Orbit | Customer Portal",
   description: "Advanced AI orchestration for trades business workflow.",
   manifest: "/manifest.json",
-  viewport: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0",
-  themeColor: "#8AB4F8",
   openGraph: {
     title: "Sophiie Orbit",
   },
@@ -20,6 +18,14 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
     title: "Sophiie Orbit",
   },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: "#8AB4F8",
 };
 
 /**

@@ -13,6 +13,7 @@ export function useAuth() {
   
   return useMemo(() => ({
     isLoggedIn: !!token,
+    token,
     user: user ? { name: user.full_name || user.email, email: user.email } : null,
     login: async () => true, // Login happens in the actual login page via useRealAuth
     logout: signOut

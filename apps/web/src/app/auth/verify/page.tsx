@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
@@ -10,10 +10,21 @@ import Button from "@mui/material/Button";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
 
-/**
- * Email Verification landing page -- processes the UUID token and shows results.
- */
 export default function VerifyEmailPage() {
+  return (
+    <Suspense
+      fallback={
+        <Box sx={{ height: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <CircularProgress />
+        </Box>
+      }
+    >
+      <VerifyEmailContent />
+    </Suspense>
+  );
+}
+
+function VerifyEmailContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const token = searchParams.get("token");

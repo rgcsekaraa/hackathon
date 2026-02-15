@@ -10,7 +10,7 @@ import Alert from "@mui/material/Alert";
 import Paper from "@mui/material/Paper";
 import Link from "@mui/material/Link";
 import CircularProgress from "@mui/material/CircularProgress";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/components/providers/AuthProvider";
 
 export default function SignupPage() {
   const [email, setEmail] = useState("");
