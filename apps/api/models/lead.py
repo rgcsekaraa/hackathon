@@ -70,6 +70,11 @@ class UserProfile(Base):
     # Availability (JSON: {"mon": ["08:00-17:00"], "tue": [...], ...})
     working_hours: Mapped[dict] = mapped_column(JSON, default=dict)
 
+    # Inbound config (JSON: {"persona": "...", "source": "...", "identifier": "..."})
+    inbound_config: Mapped[dict] = mapped_column(JSON, default=dict)
+
+    is_gmail_setup: Mapped[bool] = mapped_column(Boolean, default=False)
+
     # Meta
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
