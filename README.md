@@ -29,83 +29,14 @@ Sophiie captures customer intent from voice and text, classifies and enriches le
 ## Data Flow
 
 ### System Architecture
+![Architecture Diagram](./docs/diagrams/architecture-diagram.png)
+
 This diagram outlines how the Sophiie API orchestrates various services and AI providers to keep the Orbit and Space portals synced in real-time.
 
-```mermaid
-graph TD
-    %% Users
-    Customer((Customer))
-    Tradie((Tradie))
-    Admin((Super Admin))
-
-    %% Frontends
-    Tradie -->|Uses| Orbit[Sophiie Orbit Dashboard]
-    Admin -->|Uses| Space[Sophiie Space Console]
-    
-    %% Ingress
-    Customer -->|Voice Call| Twilio[Twilio Telephony]
-    Customer -->|SMS/Photo| REST[FastAPI REST Layer]
-
-    subgraph "Sophiie API (The Brain)"
-        Twilio <-->|Media Stream| VS[Voice Streamer]
-        REST -->|Payload| LO[Lead Orchestrator]
-        
-        %% Pipeline
-        VS <-->|STT| DG[Deepgram]
-        VS <-->|LLM| LLM[OpenRouter / Claude]
-        VS <-->|TTS| EL[ElevenLabs]
-
-        %% Logic
-        LO -->|Price Logic| Pricing[Quote Engine]
-        Pricing -->|Radius/Travel| G[Google Maps/Vision]
-        
-        %% Database & Sync
-        LO -->|Persist| DB[(SQLite Database)]
-        LO -->|Broadcast| Conn[Connection Manager]
-    end
-
-    %% Realtime Push
-    Conn -->|WebSocket Patch| Orbit
-    Conn -->|WebSocket Patch| Space
-```
-
 ### End-to-End Sequence (Leaky Tap Scenario)
+![Sequence Diagram](./docs/diagrams/sequence-diagram.png)
+
 This flow demonstrates the multimodal journey from a voice call to an automated booking.
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant C as Customer (Phone)
-    participant API as Sophiie API
-    participant AI as AI (STT/LLM/TTS)
-    participant G as Google (Vision/Maps)
-    participant T as Tradie (Orbit App)
-
-    Note over C, AI: Initial Engagement
-    C->>API: Calls Tradie Number
-    API->>AI: Initiate "Live AI Session"
-    AI->>C: "G'day! I can help. Can you send a photo of the tap?"
-    API->>C: Sends SMS with Upload Link (via Twilio)
-
-    Note over C, G: Multimodal Analysis
-    C->>API: Uploads photo of the leaky tap
-    API->>G: Identifies tap model & brand (Google Vision)
-    API->>API: Searches Bunnings for Part Price ($45.00)
-
-    Note over API, G: Logistics & Pricing
-    API->>G: Calculates travel distance (Google Maps)
-    API->>API: Total Quote = Callout + Labor + Part + Travel
-    
-    Note over API, T: Real-time Orchestration
-    API-->>T: WebSocket: Push "New Lead" with Photo & Instant Quote
-    T->>T: Orbit pulses red. Tradie reviews details.
-    T->>API: Clicks [Confirm & Book]
-
-    Note over API, C: Closing Flow
-    API->>AI: Trigger TTS response
-    AI->>C: "All set! I've booked you in for tomorrow. Total is $235."
-    API->>API: Updates Shared Calendar & Leads Table
-```
 
 ### Simple Flow Explanation
 1.  **Smart Intake**: A customer calls. The AI receptionist answers, identifies the issue (e.g., a "leaky tap"), and sends an automated text message asking for a photo.
