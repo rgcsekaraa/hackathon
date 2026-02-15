@@ -41,27 +41,26 @@ export function ActionChips() {
           onClick={() => sendUtterance(chip.command, "chip")}
           sx={{
             cursor: "pointer",
-            height: 40,
-            borderRadius: "12px",
-            fontSize: "0.8rem",
-            fontWeight: 700,
-            backgroundColor: alpha(theme.palette.surfaceVariant.main, 0.4),
+            height: 36,
+            borderRadius: "8px",
+            fontSize: "0.75rem",
+            fontWeight: 600,
+            backgroundColor: alpha(theme.palette.divider, 0.05),
             border: "1px solid",
             borderColor: "divider",
             color: "text.primary",
             px: 0.5,
-            transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+            transition: "all 0.2s ease-in-out",
             "& .MuiChip-icon": { 
-              color: "primary.main",
-              fontSize: 18,
+              color: "text.secondary",
+              fontSize: 16,
             },
             "&:hover": {
-              backgroundColor: alpha(theme.palette.primary.main, 0.1),
-              borderColor: "primary.main",
-              boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.2)}`,
+              backgroundColor: alpha(theme.palette.primary.main, 0.05),
+              borderColor: alpha(theme.palette.primary.main, 0.1),
             },
             "&:active": {
-              transform: "scale(0.95)",
+              transform: "scale(0.98)",
             },
             "& .MuiChip-label": {
               px: 1,
