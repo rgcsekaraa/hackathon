@@ -334,6 +334,9 @@ Mobile-first workspace for **Trade Professionals** to manage daily operations.
 - **Hands-free AI**: Voice Assistant (VoiceFab) for scheduling and SMS.
 - **Quote Approvals**: Review and dispatch AI-generated quotes.
 
+> [!TIP]
+> **Mobile Utility**: A native mobile app experience is critical for tradies, allowing them to manage their workspace, receive real-time lead alerts, and use the voice assistant while on the job or between sites.
+
 ### 🌌 Sophiie Space (The Command Center)
 Internal control plane for **Platform Administrators**.
 - **User Onboarding**: Configure tradie business profiles, rates, and service areas.
