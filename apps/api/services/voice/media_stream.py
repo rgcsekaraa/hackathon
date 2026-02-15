@@ -18,6 +18,7 @@ import logging
 import uuid
 from datetime import datetime, timezone
 from typing import Optional
+from sqlalchemy import select
 
 from fastapi import WebSocket, WebSocketDisconnect
 
@@ -27,6 +28,8 @@ from services.voice.tts_stream import stream_tts_to_mulaw
 from services.ai.langchain_agent import classify_lead, ClassifiedLead, _fallback_classify
 from services.realtime.connection_manager import lead_manager
 from services.profile_context import get_profile_context_for_ai as get_tradie_context_for_ai
+from db.session import get_db_context
+from models.lead import LeadSession, UserProfile, LeadStatus
 
 logger = logging.getLogger(__name__)
 
@@ -433,7 +436,47 @@ async def _broadcast_lead(session: CallSession) -> None:
     }
 
     try:
+        await _persist_realtime_lead(session, lead_data)
         await lead_manager.broadcast_new_lead(lead_data)
         logger.info("📱 Lead broadcast: %s (%s)", session.lead_id, classified.job_type)
     except Exception as exc:
         logger.error("Lead broadcast failed: %s", exc)
+
+
+async def _persist_realtime_lead(session: CallSession, lead_data: dict) -> None:
+    """Persist media-stream lead so downstream photo/decision endpoints can operate on it."""
+    profile_id = session.tradie_ctx.get("user_profile_id")
+    if not profile_id:
+        logger.warning("Skipping realtime lead persistence; missing user_profile_id in context")
+        return
+
+    async with get_db_context() as db:
+        profile_result = await db.execute(select(UserProfile).where(UserProfile.id == profile_id))
+        if not profile_result.scalar_one_or_none():
+            logger.warning("Skipping realtime lead persistence; profile not found: %s", profile_id)
+            return
+
+        existing = await db.execute(select(LeadSession).where(LeadSession.id == lead_data["id"]))
+        if existing.scalar_one_or_none():
+            return
+
+        lead = LeadSession(
+            id=lead_data["id"],
+            user_profile_id=profile_id,
+            status=LeadStatus.NEW.value,
+            customer_name=lead_data.get("customerName", ""),
+            customer_phone=lead_data.get("customerPhone", ""),
+            customer_address=lead_data.get("address", ""),
+            job_type=lead_data.get("jobType", ""),
+            job_description=lead_data.get("description", ""),
+            urgency=lead_data.get("urgency", "flexible"),
+            conversation=[
+                {
+                    "role": "customer",
+                    "text": lead_data.get("transcript", ""),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                }
+            ],
+        )
+        db.add(lead)
+        await db.commit()

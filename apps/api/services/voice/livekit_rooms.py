@@ -7,6 +7,7 @@ Future-ready: enables live consultations and on-site support calls.
 
 import logging
 import time
+from datetime import timedelta
 from typing import Optional
 
 from core.config import settings
@@ -86,7 +87,7 @@ async def generate_participant_token(
         token = AccessToken(api_key, api_secret)
         token.identity = identity
         token.name = identity
-        token.ttl = ttl_seconds
+        token.with_ttl(timedelta(seconds=ttl_seconds))
 
         grants = VideoGrants(
             room_join=True,

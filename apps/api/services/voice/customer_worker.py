@@ -11,16 +11,14 @@ Usage:
     python apps/api/services/voice/customer_worker.py dev
 """
 
-import asyncio
 import logging
 from datetime import datetime, timezone
-from typing import Annotated
+from sqlalchemy import select
 
 from livekit.agents import (
     AutoSubscribe,
     AgentSession,
     JobContext,
-    JobProcess,
     JobRequest,
     WorkerOptions,
     cli,
@@ -37,6 +35,9 @@ from services.profile_context import (
 )
 from services.integrations.distance import calculate_distance
 from services.realtime.connection_manager import lead_manager
+from services.lead_orchestrator import create_lead, process_customer_message
+from schemas.lead import LeadCreate, UrgencyEnum
+from models.lead import UserProfile
 
 logger = logging.getLogger("customer-worker")
 logger.setLevel(logging.INFO)
@@ -48,10 +49,13 @@ class TradieController:
     Allows the AI to check service areas, availability, and log leads.
     """
 
-    def __init__(self, tradie_ctx: dict, lead_id: str):
+    def __init__(self, tradie_ctx: dict, lead_id: str, caller_identity: str):
         self.tradie_ctx = tradie_ctx
         self.lead_id = lead_id
+        self.caller_identity = caller_identity
         self.business_name = tradie_ctx.get("business_name", "our plumber")
+        self.tradie_id = tradie_ctx.get("tradie_id")
+        self.user_profile_id = tradie_ctx.get("user_profile_id")
 
     @llm.function_tool(description="Check if a suburb is within our service area")
     async def check_service_area(self, suburb: str) -> str:
@@ -100,40 +104,107 @@ class TradieController:
                 text += f"- {slot['display']}\n"
         return text
 
-    @llm.function_tool(description="Log the customer's job details and contact info")
-    async def log_lead_details(
+    @llm.function_tool(description="Run estimator handoff: persist lead, analyse issue, calculate quote, and push to tradie portal")
+    async def handoff_to_estimator(
         self,
         customer_name: str,
+        customer_phone: str,
         job_description: str,
         address: str,
+        urgency: str = "today",
     ) -> str:
         """
-        Log the lead details to the system.
+        Multi-agent handoff from receptionist -> estimator.
+        This writes the lead to DB, runs enrichment + pricing, and pushes it live.
 
         Args:
             customer_name: Customer's name.
+            customer_phone: Customer phone number.
             job_description: Summary of the plumbing issue.
             address: Property address.
+            urgency: emergency/today/tomorrow/this_week/flexible.
         """
-        logger.info("Logging lead: %s, %s", customer_name, job_description)
-
-        lead_data = {
-            "id": self.lead_id,
-            "customerName": customer_name,
-            "address": address,
-            "description": job_description,
-            "status": "new",
-            "businessName": self.business_name,
-            "createdAt": datetime.now(timezone.utc).isoformat(),
-            "transcript": "Live voice call in progress...",
-        }
-
+        urgency_value = urgency if urgency in {e.value for e in UrgencyEnum} else UrgencyEnum.FLEXIBLE.value
         try:
-            await lead_manager.broadcast_new_lead(lead_data)
-            return "Lead details logged and sent to the tradie's app."
+            async with get_db_context() as db:
+                profile = None
+                if self.user_profile_id:
+                    result = await db.execute(select(UserProfile).where(UserProfile.id == self.user_profile_id))
+                    profile = result.scalar_one_or_none()
+                if not profile:
+                    result = await db.execute(select(UserProfile).limit(1))
+                    profile = result.scalar_one_or_none()
+                if not profile:
+                    return "No active tradie profile found. I can't create this lead yet."
+
+                lead_payload = LeadCreate(
+                    customer_name=customer_name,
+                    customer_phone=customer_phone or self.caller_identity,
+                    customer_address=address,
+                    job_description=job_description,
+                    urgency=UrgencyEnum(urgency_value),
+                )
+                lead = await create_lead(db, profile.id, lead_payload)
+                await process_customer_message(db, lead, job_description)
+                await db.commit()
+                await db.refresh(lead)
+
+                realtime_lead = {
+                    "id": lead.id,
+                    "customerName": lead.customer_name,
+                    "customerPhone": lead.customer_phone,
+                    "address": lead.customer_address,
+                    "urgency": lead.urgency,
+                    "status": lead.status,
+                    "jobType": lead.job_type,
+                    "description": lead.job_description,
+                    "quoteTotal": lead.quote_total,
+                    "businessName": self.business_name,
+                    "createdAt": lead.created_at.isoformat() if lead.created_at else datetime.now(timezone.utc).isoformat(),
+                }
+                await lead_manager.broadcast_new_lead(realtime_lead)
+
+            quote_text = f"${lead.quote_total:.2f}" if lead.quote_total else "pending"
+            return f"Handoff complete. Lead {lead.id} is ready with estimate {quote_text}."
         except Exception as exc:
-            logger.error("Failed to broadcast lead: %s", exc)
-            return "Lead logged locally (broadcast failed)."
+            logger.error("Estimator handoff failed: %s", exc, exc_info=True)
+            return f"I couldn't complete estimator handoff due to an internal error: {exc}"
+
+    @llm.function_tool(description="Notify tradie copilot with a concise lead summary")
+    async def handoff_to_tradie_copilot(self, lead_id: str, summary: str) -> str:
+        """Push a short note to tradie copilot UI for immediate follow-up."""
+        if not self.tradie_id:
+            return "Tradie copilot handoff skipped: tradie identity unavailable."
+        try:
+            operations = [{
+                "op": "add",
+                "component": {
+                    "id": f"handoff-{lead_id}",
+                    "type": "note",
+                    "title": f"Lead Handoff {lead_id[:8]}",
+                    "description": summary,
+                    "priority": "high",
+                    "completed": False,
+                    "createdAt": datetime.now(timezone.utc).isoformat(),
+                    "updatedAt": datetime.now(timezone.utc).isoformat(),
+                },
+            }]
+            await lead_manager.send_to_tradie(self.tradie_id, {"type": "patch", "operations": operations})
+            return f"Tradie copilot notified for lead {lead_id}."
+        except Exception as exc:
+            logger.error("Tradie copilot handoff failed: %s", exc)
+            return f"Could not notify tradie copilot: {exc}"
+
+    @llm.function_tool(description="Legacy alias for estimator handoff")
+    async def log_lead_details(self, customer_name: str, job_description: str, address: str) -> str:
+        """Backward compatible alias routed to handoff_to_estimator."""
+        return await self.handoff_to_estimator(
+            customer_name=customer_name,
+            customer_phone=self.caller_identity,
+            job_description=job_description,
+            address=address,
+            urgency="today",
+        )
 
 
 async def entrypoint(ctx: JobContext):
@@ -161,7 +232,7 @@ async def entrypoint(ctx: JobContext):
         logger.error("Failed to load tradie context: %s", exc)
 
     # 4. Build tool controller
-    fnc_ctx = TradieController(tradie_ctx, lead_id)
+    fnc_ctx = TradieController(tradie_ctx, lead_id, caller_identity)
     tools = llm.find_function_tools(fnc_ctx)
 
     # 5. Build instructions
@@ -170,8 +241,11 @@ async def entrypoint(ctx: JobContext):
     instructions = (
         f"{context_text}\n\n"
         "You are a friendly, professional receptionist for this plumbing business. "
-        "Your goal is to collect the customer's name, address, and issue details. "
+        "Your goal is to collect the customer's name, phone, address, urgency, and issue details. "
         "Use the tools provided to check service area and availability. "
+        "After intake is complete, call handoff_to_estimator exactly once. "
+        "Then call handoff_to_tradie_copilot with a one-sentence summary. "
+        "Prioritize short, low-latency responses and avoid long explanations. "
         "Keep responses concise and conversational (Australian accent). "
         "Start by introducing yourself and the business."
     )
