@@ -68,6 +68,19 @@ interface WorkspaceProviderProps {
 
 const WS_BASE_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000";
 
+function mapLeadStatus(status: string): Enquiry["status"] {
+  if (status === "details_collected" || status === "media_pending" || status === "pricing" || status === "tradie_review") {
+    return "pending";
+  }
+  if (status === "confirmed" || status === "booked") {
+    return "responded";
+  }
+  if (status === "rejected" || status === "cancelled") {
+    return "closed";
+  }
+  return "new";
+}
+
 /**
  * Manages WebSocket connection to the backend and workspace state.
  *
@@ -101,11 +114,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
           phone: l.customer_phone || "",
           subject: l.job_type || "General Enquiry",
           summary: l.job_description || "",
-          status: l.status === "details_collected" ? "pending" : 
-                  l.status === "confirmed" ? "responded" :
-                  l.status === "booked" ? "responded" :
-                  l.status === "rejected" ? "closed" :
-                  l.status === "cancelled" ? "closed" : "new",
+          status: mapLeadStatus(String(l.status || "new")),
           receivedAt: new Date(l.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }));
         setLeads(mapped);
@@ -176,7 +185,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
         phone: l.customerPhone || "",
         subject: l.jobType || "New Request",
         summary: l.description || "",
-        status: "new",
+        status: mapLeadStatus(String(l.status || "new")),
         receivedAt: "Just now"
       };
       setNewLeadPush(mapped);
