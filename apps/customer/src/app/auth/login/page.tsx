@@ -15,7 +15,6 @@ import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import DarkModeOutlined from "@mui/icons-material/DarkModeOutlined";
 import LightModeOutlined from "@mui/icons-material/LightModeOutlined";
 import MicNoneOutlined from "@mui/icons-material/MicNoneOutlined";
-import GoogleIcon from "@mui/icons-material/Google";
 import { useTheme, alpha } from "@mui/material/styles";
 import { useAuth } from "@/lib/auth-context";
 import { useThemeMode } from "@/lib/theme-context";
@@ -108,7 +107,6 @@ export default function LoginScreen() {
       setError("Please fill in all fields");
       return;
     }
-
     setLoading(true);
     setError("");
     try {
@@ -122,9 +120,7 @@ export default function LoginScreen() {
         return;
       }
 
-      const rawUser = localStorage.getItem("user");
-      const role = rawUser ? JSON.parse(rawUser)?.role : undefined;
-      router.push(role === "admin" ? "/admin-portal" : "/customer-portal");
+      router.push("/dashboard");
     } catch {
       setError("Something went wrong");
     } finally {
@@ -160,12 +156,7 @@ export default function LoginScreen() {
           onClick={toggleMode}
           size="small"
           aria-label={`Switch to ${isDark ? "light" : "dark"} mode`}
-          sx={{
-            color: "text.secondary",
-            bgcolor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)",
-            width: 36,
-            height: 36,
-          }}
+          sx={{ color: "text.secondary", bgcolor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)", width: 36, height: 36 }}
         >
           {isDark ? <LightModeOutlined sx={{ fontSize: 18 }} /> : <DarkModeOutlined sx={{ fontSize: 18 }} />}
         </IconButton>
@@ -200,7 +191,7 @@ export default function LoginScreen() {
                   lineHeight: 1.2,
                 }}
               >
-                Sophie Orbit
+                Sophiie Orbit
               </Typography>
               <Typography
                 variant="body1"
@@ -240,12 +231,19 @@ export default function LoginScreen() {
             display: "flex",
             flexDirection: "column",
             gap: 2,
-            ...(!isDark && { boxShadow: "0 -4px 32px rgba(0,0,0,0.06)" }),
+            ...(!isDark && {
+              boxShadow: "0 -4px 32px rgba(0,0,0,0.06)",
+            }),
           }}
         >
           <Typography
             variant="subtitle1"
-            sx={{ color: "text.primary", fontWeight: 600, fontSize: "1rem", mb: 0.5 }}
+            sx={{
+              color: "text.primary",
+              fontWeight: 600,
+              fontSize: "1rem",
+              mb: 0.5,
+            }}
           >
             Sign in
           </Typography>
@@ -253,7 +251,7 @@ export default function LoginScreen() {
           <TextField
             fullWidth
             label="Email"
-            type="text"
+            type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             autoComplete="email"
@@ -329,7 +327,6 @@ export default function LoginScreen() {
             onClick={() => {
               window.location.href = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/auth/google/login`;
             }}
-            startIcon={<GoogleIcon />}
             sx={{
               py: 1.2,
               borderRadius: "12px",
@@ -344,7 +341,7 @@ export default function LoginScreen() {
             variant="body2"
             sx={{ color: "text.secondary", textAlign: "center", fontSize: "0.72rem", mt: 0.5, opacity: 0.7 }}
           >
-            Enter any valid account. Admin alias: demo-SA
+            {"Enter any email & password to demo"}
           </Typography>
         </Box>
       </Fade>

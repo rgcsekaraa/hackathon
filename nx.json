@@ -2,7 +2,6 @@
   "installation": {
     "version": "22.5.1"
   },
-  "defaultProject": "web",
   "targetDefaults": {
     "build": {
       "dependsOn": ["^build"],

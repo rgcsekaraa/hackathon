@@ -9,10 +9,12 @@
   ],
   "scripts": {
     "dev": "pnpm exec nx run-many --target=serve --all --parallel=3",
-    "build": "NX_DAEMON=false NODE_OPTIONS='--max-old-space-size=4096' GENERATE_SOURCEMAP=false pnpm exec nx build web",
-    "dev:web": "pnpm exec nx dev web",
+    "build": "NX_DAEMON=false NODE_OPTIONS='--max-old-space-size=4096' GENERATE_SOURCEMAP=false pnpm exec nx run-many --target=build --projects=customer,admin",
+    "dev:customer": "pnpm --filter customer dev",
+    "dev:admin": "pnpm --filter admin dev",
     "dev:api": "cd apps/api && uv run uvicorn main:app --reload --host 0.0.0.0 --port 8000",
-    "build:web": "NX_DAEMON=false NODE_OPTIONS='--max-old-space-size=4096' GENERATE_SOURCEMAP=false pnpm exec nx build web",
+    "build:customer": "NX_DAEMON=false NODE_OPTIONS='--max-old-space-size=4096' GENERATE_SOURCEMAP=false pnpm exec nx build customer",
+    "build:admin": "NX_DAEMON=false NODE_OPTIONS='--max-old-space-size=4096' GENERATE_SOURCEMAP=false pnpm exec nx build admin",
     "lint": "pnpm exec nx run-many --target=lint",
     "typecheck": "pnpm exec nx run-many --target=typecheck"
   },
