@@ -41,6 +41,7 @@ class Settings(BaseSettings):
     secret_key: str = "supersecret_change_me_in_prod"
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 60 * 24 * 7  # 7 days for dev convenience
+    admin_emails: list[str] = ["superadmin@sophiie.com"]
 
     # OAuth2 / Google SSO
     google_client_id: str = ""

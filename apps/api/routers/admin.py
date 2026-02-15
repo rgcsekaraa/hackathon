@@ -15,14 +15,18 @@ from core.deps import get_current_user
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+
+def _require_admin(user: User) -> None:
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="Not authorized")
+
 @router.get("/profiles", response_model=list[UserProfileResponse])
 async def get_all_profiles(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """Fetch all onboarded customer profiles (Admin Only)."""
-    if current_user.role != "admin" and current_user.email != "superadmin@sophiie.com":
-        raise HTTPException(status_code=403, detail="Not authorized")
+    _require_admin(current_user)
         
     result = await db.execute(select(UserProfile))
     return result.scalars().all()
@@ -35,18 +39,19 @@ async def onboard_customer(
     current_user: User = Depends(get_current_user)
 ):
     """Unified onboarding: Create user and their business profile."""
-    if current_user.role != "admin" and current_user.email != "superadmin@sophiie.com":
-        raise HTTPException(status_code=403, detail="Not authorized")
+    _require_admin(current_user)
+
+    normalized_email = user_in.email.strip().lower()
 
     # 1. Check if user already exists
-    result = await db.execute(select(User).where(User.email == user_in.email))
+    result = await db.execute(select(User).where(User.email == normalized_email))
     if result.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="User already exists")
 
     # 2. Create User
     new_user = User(
         id=str(uuid.uuid4()),
-        email=user_in.email,
+        email=normalized_email,
         full_name=user_in.full_name,
         hashed_password=get_password_hash(user_in.password),
         is_verified=True,
@@ -78,8 +83,7 @@ async def get_admin_stats(
     current_user: User = Depends(get_current_user)
 ):
     """Fetch global reports for the Super-Admin dashboard."""
-    if current_user.role != "admin" and current_user.email != "superadmin@sophiie.com":
-        raise HTTPException(status_code=403, detail="Not authorized")
+    _require_admin(current_user)
 
     from sqlalchemy import func
     from models.lead import LeadSession
@@ -104,8 +108,7 @@ async def update_customer_profile(
     current_user: User = Depends(get_current_user)
 ):
     """Update specific customer settings (Admin Only)."""
-    if current_user.role != "admin" and current_user.email != "superadmin@sophiie.com":
-        raise HTTPException(status_code=403, detail="Not authorized")
+    _require_admin(current_user)
 
     result = await db.execute(select(UserProfile).where(UserProfile.id == profile_id))
     profile = result.scalar_one_or_none()

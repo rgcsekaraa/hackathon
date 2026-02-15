@@ -34,20 +34,27 @@ async def signup(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
             detail="A user with this email already exists."
         )
     
+    normalized_email = user_in.email.strip().lower()
+    admin_emails = {e.strip().lower() for e in settings.admin_emails}
+    is_bootstrap_admin = normalized_email in admin_emails
+
     # Create user
     user = User(
         id=str(uuid.uuid4()),
-        email=user_in.email,
+        email=normalized_email,
         full_name=user_in.full_name,
         hashed_password=get_password_hash(user_in.password),
-        verification_token=str(uuid.uuid4())
+        role="admin" if is_bootstrap_admin else "member",
+        is_verified=True if is_bootstrap_admin else False,
+        verification_token=None if is_bootstrap_admin else str(uuid.uuid4()),
     )
     db.add(user)
     await db.commit()
     await db.refresh(user)
     
-    logger.info(f"EMAIL VERIFICATION TOKEN FOR {user.email}: {user.verification_token}")
-    print(f"\n>>> EMAIL VERIFICATION TOKEN FOR {user.email}: {user.verification_token}\n")
+    if user.verification_token:
+        logger.info(f"EMAIL VERIFICATION TOKEN FOR {user.email}: {user.verification_token}")
+        print(f"\n>>> EMAIL VERIFICATION TOKEN FOR {user.email}: {user.verification_token}\n")
     
     # Generate token
     token = create_access_token(data={"sub": user.id})
@@ -60,7 +67,8 @@ async def signup(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
 @router.post("/login", response_model=Token)
 async def login(credentials: UserLogin, db: AsyncSession = Depends(get_db)):
     """Authenticate a user and return an access token."""
-    result = await db.execute(select(User).where(User.email == credentials.email))
+    normalized_email = credentials.email.strip().lower()
+    result = await db.execute(select(User).where(User.email == normalized_email))
     user = result.scalar_one_or_none()
     
     if not user or not verify_password(credentials.password, user.hashed_password):
@@ -70,6 +78,14 @@ async def login(credentials: UserLogin, db: AsyncSession = Depends(get_db)):
             headers={"WWW-Authenticate": "Bearer"},
         )
     
+    admin_emails = {e.strip().lower() for e in settings.admin_emails}
+    if normalized_email in admin_emails and (user.role != "admin" or not user.is_verified):
+        user.role = "admin"
+        user.is_verified = True
+        user.verification_token = None
+        await db.commit()
+        await db.refresh(user)
+
     if not user.is_verified:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -156,7 +172,7 @@ async def get_me(current_user: User = Depends(get_current_user)):
 @router.post("/forgot-password")
 async def forgot_password(req: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
     """Generate a password reset token and 'send' it via email (mocked)."""
-    result = await db.execute(select(User).where(User.email == req.email))
+    result = await db.execute(select(User).where(User.email == req.email.strip().lower()))
     user = result.scalar_one_or_none()
     
     if not user:
