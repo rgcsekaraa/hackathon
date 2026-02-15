@@ -179,17 +179,19 @@ Internal control plane for **Platform Administrators**.
 
 ### Prerequisites
 
-- **Node.js** 18+ and **pnpm**
-- **Python** 3.11+ and **pip** (or **uv**)
-- API keys for: Deepgram, ElevenLabs, OpenRouter (see Environment Variables below)
+- **Node.js** 20+ and **pnpm** (required by `package.json`)
+- **Python** 3.11+ and **uv** (recommended) or **pip**
+- `ngrok` (only needed for Twilio inbound call testing from public internet)
 
 ### 1. Install Dependencies
 
 ```bash
-# Frontend (from project root)
+# Monorepo deps (from project root)
 pnpm install
 
-# Backend
+# Backend deps (choose one)
+cd apps/api && uv sync
+# OR
 cd apps/api && pip install -r requirements.txt
 ```
 
@@ -197,20 +199,54 @@ cd apps/api && pip install -r requirements.txt
 
 ```bash
 cp apps/api/.env.example apps/api/.env
-# Edit apps/api/.env with your API keys (see table below)
+# Edit apps/api/.env (full variable matrix is below)
+```
+
+Optional frontend env files:
+
+```bash
+# apps/customer/.env.local
+NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_WS_URL=ws://localhost:8000
+
+# apps/admin/.env.local
+NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_WS_URL=ws://localhost:8000
 ```
 
 ### 3. Start Services
 
+Run everything via NX:
+
+```bash
+# API + customer + admin in parallel
+npx nx run-many --target=serve --projects=api,customer,admin --parallel=3 --output-style=stream
+```
+
+Or run individually:
+
+```bash
+# Terminal 1 — Backend API (NX)
+npx nx serve api
+
+# Terminal 2 — Customer Portal (NX)
+npx nx serve customer
+
+# Terminal 3 — Admin Portal (NX)
+npx nx serve admin
+```
+
+Or without NX:
+
 ```bash
 # Terminal 1 — Backend API
-cd apps/api && uvicorn main:app --reload --port 8000
+cd apps/api && uv run uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
-# Terminal 2 — Customer Portal (Sophiie Orbit)
-cd apps/customer && npm run dev    # → http://localhost:3000
+# Terminal 2 — Customer Portal
+cd apps/customer && npx next dev -p 3000
 
-# Terminal 3 — Admin Portal (Sophiie Space)
-cd apps/admin && npm run dev       # → http://localhost:3001
+# Terminal 3 — Admin Portal
+cd apps/admin && npx next dev -p 3001
 
 # Terminal 4 — Tradie Voice Worker (Assistant)
 pnpm worker:tradie
@@ -219,7 +255,7 @@ pnpm worker:tradie
 pnpm worker:customer
 ```
 
-> **Shortcut:** `pnpm dev` starts the API + both frontends in parallel via NX.
+> **Shortcut:** `pnpm dev` starts API + both portals via NX.
 
 ### 4. Access
 
@@ -234,11 +270,31 @@ pnpm worker:customer
 
 ```bash
 npx nx show projects                  # List all projects
+npx nx run-many --target=serve --projects=api,customer,admin --parallel=3
 npx nx serve customer                 # Start customer portal
 npx nx serve admin                    # Start admin portal
+npx nx serve api                      # Start backend
 npx nx build customer                 # Build customer portal
 npx nx build admin                    # Build admin portal
 npx nx run-many --target=build        # Build all
+```
+
+### Port / Process Checks
+
+If NX fails with `EADDRINUSE`, stop existing processes first:
+
+```bash
+lsof -nP -iTCP:8000 -sTCP:LISTEN
+lsof -nP -iTCP:3000 -sTCP:LISTEN
+lsof -nP -iTCP:3001 -sTCP:LISTEN
+```
+
+Quick health checks:
+
+```bash
+curl http://localhost:8000/health
+curl -I http://localhost:3000
+curl -I http://localhost:3001
 ```
 
 ---
@@ -269,19 +325,47 @@ Set in `apps/api/.env`:
 
 | Variable | Required | Description |
 |----------|----------|-------------|
+| `DEBUG` | Optional | FastAPI debug flag (`false` by default) |
 | `SECRET_KEY` | Yes | JWT signing key |
-| `DATABASE_URL` | Yes | SQLite connection string |
-| `FRONTEND_URL` | Yes | Customer portal URL (e.g. `http://localhost:3000`) |
-| `DEEPGRAM_API_KEY` | Yes | Real-time speech-to-text |
-| `ELEVENLABS_API_KEY` | Yes | Text-to-speech synthesis |
-| `OPENROUTER_API_KEY` | Yes | LLM provider for AI classification |
-| `LIVEKIT_URL` | Yes | LiveKit server URL for voice agents |
-| `LIVEKIT_API_KEY` | Yes | LiveKit API key |
-| `LIVEKIT_API_SECRET` | Yes | LiveKit API secret |
-| `TWILIO_ACCOUNT_SID` | Optional | SMS and voice calls |
-| `TWILIO_AUTH_TOKEN` | Optional | Twilio authentication |
-| `GOOGLE_CLIENT_ID` | Optional | Google OAuth (customer portal) |
-| `GOOGLE_CLIENT_SECRET` | Optional | Google OAuth |
+| `DATABASE_URL` | Yes | DB URL (`sqlite+aiosqlite:///./spatial_voice.db` by default) |
+| `FRONTEND_URL` | Yes | Used in OAuth callback redirects and SMS photo links |
+| `CORS_ORIGINS` | Optional | Allowed origins list |
+| `ADMIN_EMAILS` | Optional | Admin allow-list |
+| `BOOTSTRAP_ADMIN_ENABLED` | Optional | Create default admin user on startup |
+| `BOOTSTRAP_ADMIN_ALIAS` | Optional | Default admin alias |
+| `BOOTSTRAP_ADMIN_EMAIL` | Optional | Default admin email |
+| `BOOTSTRAP_ADMIN_PASSWORD` | Optional | Default admin password |
+| `BOOTSTRAP_ADMIN_NAME` | Optional | Default admin full name |
+| `OPENROUTER_API_KEY` | Required for AI + vision fallback | LLM + multimodal provider |
+| `OPENROUTER_MODEL` | Optional | Primary LLM model |
+| `OPENROUTER_VISION_MODEL` | Optional | Preferred vision model |
+| `OPENROUTER_BASE_URL` | Optional | OpenRouter API base URL |
+| `GOOGLE_CLOUD_VISION_KEY` | Optional | Vision provider fallback (after OpenRouter) |
+| `GOOGLE_MAPS_API_KEY` | Optional | Distance Matrix primary provider |
+| `SERPAPI_API_KEY` | Optional | Live parts pricing via Google Shopping |
+| `PRICING_LIVE_ENABLED` | Optional | Toggle live pricing lookup |
+| `TWILIO_ACCOUNT_SID` | Required for live SMS/calls | Twilio account SID |
+| `TWILIO_AUTH_TOKEN` | Required for live SMS/calls | Twilio auth token |
+| `TWILIO_PHONE_NUMBER` | Required for live SMS/calls | Purchased Twilio number |
+| `DEEPGRAM_API_KEY` | Required for voice transcription | Deepgram STT |
+| `ELEVENLABS_API_KEY` | Required for voice responses | ElevenLabs TTS |
+| `ELEVENLABS_VOICE_ID` | Optional | Voice ID override |
+| `LIVEKIT_API_KEY` | Required for LiveKit agents | LiveKit API key |
+| `LIVEKIT_API_SECRET` | Required for LiveKit agents | LiveKit API secret |
+| `LIVEKIT_URL` | Required for LiveKit agents | LiveKit WS endpoint |
+| `GOOGLE_CLIENT_ID` | Optional | Google OAuth login |
+| `GOOGLE_CLIENT_SECRET` | Optional | Google OAuth login |
+| `GOOGLE_REDIRECT_URI` | Optional | OAuth callback (`/auth/google/callback`) |
+| `REDIS_ENABLED` | Optional | Enable Redis cache path |
+| `REDIS_URL` | Optional | Redis connection URL |
+| `DEFAULT_BUSINESS_NAME` | Optional | Fallback business profile |
+| `DEFAULT_BASE_ADDRESS` | Optional | Fallback base address |
+| `DEFAULT_CALLOUT_FEE` | Optional | Fallback pricing |
+| `DEFAULT_HOURLY_RATE` | Optional | Fallback pricing |
+| `DEFAULT_MARKUP_PCT` | Optional | Fallback pricing |
+
+Complete copy-paste templates and validation steps:
+`docs/env.checklist.md`
 
 Frontend environment (`apps/customer/.env.local` and `apps/admin/.env.local`):
 
@@ -289,6 +373,20 @@ Frontend environment (`apps/customer/.env.local` and `apps/admin/.env.local`):
 NEXT_PUBLIC_API_URL=http://localhost:8000
 NEXT_PUBLIC_WS_URL=ws://localhost:8000
 ```
+
+### Live Call Setup (Twilio + LiveKit)
+
+1. Configure `apps/api/.env` with:
+`TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`, `LIVEKIT_URL`, `DEEPGRAM_API_KEY`, `ELEVENLABS_API_KEY`, `OPENROUTER_API_KEY`.
+2. Start API, portals, and both workers (`pnpm worker:tradie`, `pnpm worker:customer`).
+3. Expose API to Twilio:
+```bash
+ngrok http 8000
+```
+4. In Twilio number config:
+`A Call Comes In` -> `POST https://<your-ngrok-domain>/api/voice/incoming`.
+5. Test by calling your Twilio number.
+6. For SMS photo upload flow, keep `FRONTEND_URL` correct and ensure customer SMS notifications are enabled in Customer Portal.
 
 ---
 
@@ -304,7 +402,7 @@ NEXT_PUBLIC_WS_URL=ws://localhost:8000
 | `POST` | `/auth/logout` | Blacklist current token |
 | `POST` | `/auth/forgot-password` | Send password reset email |
 | `POST` | `/auth/reset-password` | Reset password with token |
-| `GET` | `/auth/google` | Initiate Google OAuth |
+| `GET` | `/auth/google/login` | Initiate Google OAuth |
 | `GET` | `/auth/google/callback` | Google OAuth callback |
 
 ### Admin
