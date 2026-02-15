@@ -1,111 +1,113 @@
-# Sophiie Space
+# Sophiie Space + Orbit
 
-**The future of spatial AI interaction.**
+Sophiie Space is a realtime multimodal workspace for trade-service operations.
+Orbit is the interaction layer and UI system powering fast voice, text, and structured workflow updates.
 
-Sophiie Space is an advanced AI agent workspace designed for high-density information management and natural human-AI interaction. Built during the Sophiie AI Agents Hackathon 2026, it focuses on providing a premium, professional experience through a custom "Orbit" design system and continuous voice/text integration.
+## What This Solves
 
-## Project Overview
+Trade teams lose time switching between calls, notes, quotes, schedule updates, and customer follow-up.
+Sophiie Space + Orbit turns that into one continuous flow:
 
-### Participant
-| Field | Information |
-|-------|-------------|
-| Name | [User Name] |
+- Capture customer intent from voice/text
+- Classify and enrich lead context with AI
+- Price and route jobs with business profile rules
+- Keep dashboard/workspace state synced in realtime
+- Trigger customer actions (for example photo upload links) from the same flow
 
-### Project Details
-| Field | Information |
-|-------|-------------|
-| Project Name | Sophiie Space |
-| One-Line Description | A high-density AI workspace with spatial voice interaction and Orbit aesthetics. |
-| Tech Stack | Next.js, FastAPI, Expo (Web/Mobile), LiveKit, LangChain |
-| AI Provider(s) | OpenAI / Anthropic (via API layer) |
+## Product Roles
 
----
+- Sophiie Space:
+  Internal operations surface for onboarding customers, configuring inbound call setup, and monitoring pipeline/agent health.
+- Sophiie Orbit:
+  Customer-facing and service-delivery surface for daily appointments, schedules, notifications, and confirmation updates.
 
-## Core Features
+## Multimodal Architecture
 
-### Sophiie Orbit Interaction
-Natural voice capture and processing (STT/TTS/LLM) that allows users to interact with their workspace hands-free. The system uses LiveKit Agents for robust, real-time voice streaming.
+```text
+Customer Voice/Text
+   -> Ingestion Layer (Twilio/WebSocket/API)
+   -> STT (Deepgram) + Intent/Entity Extraction (LLM via OpenRouter/LangChain)
+   -> Orchestration (FastAPI services + profile context + quote logic)
+   -> Persistence (SQLite via SQLAlchemy) + Caching (Redis optional)
+   -> Realtime Sync (WebSocket events to UI)
+   -> Response Layer (Web UI updates, TTS via ElevenLabs, SMS follow-up)
+```
 
-### Orbit Design System
-A complete overhaul of the interface using custom "Orbit" design tokens, featuring deep space gradients, glassmorphism, staggered animations, and refined typography.
+### Core Services
 
-### Real-time Workspace Sync
-Powered by WebSockets, the workspace stays in sync across devices, providing instant updates for tasks, notes, and AI responses.
+- `apps/web`: Next.js customer/admin web experience
+- `apps/api`: FastAPI orchestration, auth, voice/lead pipelines, integrations
+- Integrations: Deepgram, ElevenLabs, OpenRouter, Twilio, Google APIs (optional)
 
-### High-Density Dashboard
-Optimized for productivity, the dashboard provides a compact yet readable view of all active projects, tasks, and communications.
+## Features
 
----
+- Multimodal lead intake across voice and web
+- AI-assisted lead classification and quote scaffolding
+- Profile-aware routing and pricing context
+- Google OAuth + email/password auth
+- Realtime workspace sync via WebSockets
+- Readiness endpoint with external dependency checks
+- Seed script for demo data and scenario playback
+
+## User Scenario Covered
+
+1. Customer calls or submits a request.
+2. Orbit captures conversation and extracts job details.
+3. System resolves business profile context (service types, rates, travel radius).
+4. AI proposes structured lead + quote draft.
+5. Team reviews/edits in dashboard and confirms booking.
+6. Customer receives follow-up link/message; workspace remains synced for team members.
 
 ## Tech Stack
 
-### Frontend (Web)
-- Next.js 14 (App Router)
-- Material UI (MUI) with M3 tokens
-- React Hook Form + Zod
+- Frontend: Next.js (App Router), React, MUI
+- Backend: FastAPI, SQLAlchemy, aiosqlite, WebSockets
+- AI/Voice: LangChain, OpenRouter, Deepgram, ElevenLabs, LiveKit
+- Infra: Docker, docker-compose, Railway/Render manifests
 
-### Mobile (New!)
-- Expo Router
-- React Native Web (Shimmed for browser compatibility)
-- Reanimated + Linear Gradient
-- Orbit Design System
+## Usage
 
-### Backend
-- FastAPI
-- SQLAlchemy + aiosqlite
-- WebSockets for real-time communication
-- JWT Authentication
+1. Install dependencies:
 
-### AI & Voice Pipeline
-- **Orchestration**: LiveKit Agents Framework
-- **STT**: Deepgram Nova-2
-- **LLM**: LangChain + OpenAI (GPT-4o)
-- **TTS**: ElevenLabs Turbo v2
-- **RAG**: ChromaDB (Vector Search)
+```bash
+pnpm install
+cd apps/api && pip install -r requirements.txt
+```
 
----
+2. Configure backend environment:
 
-## Quick Start
+```bash
+cp apps/api/.env.example apps/api/.env
+```
 
-1.  **Install Dependencies**:
-    ```bash
-    # Install tools (if needed)
-    npm install -g pnpm nx
-    pip install uv
+Set at minimum:
+- `SECRET_KEY`
+- `DATABASE_URL`
+- `FRONTEND_URL`
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+- `GOOGLE_REDIRECT_URI`
 
-    # Install project dependencies
-    pnpm install
-    # API dependencies are auto-handled via uv, or manually:
-    # cd apps/api && uv sync
-    ```
+3. Run API and web:
 
-2.  **Environment Setup**:
-    - Copy `.env.example` to `.env` in `apps/api` and `apps/web`.
-    - Fill in keys for OpenAI, Deepgram, ElevenLabs, LiveKit.
+```bash
+pnpm run dev:api
+pnpm run dev:web
+```
 
-3.  **Start Everything (Web + API + Mobile)**:
-    ```bash
-    pnpm run dev
-    ```
-    This launches all three services in parallel:
-    - **Web Dashboard**: [http://localhost:3000](http://localhost:3000)
-    - **API Server**: [http://localhost:8000](http://localhost:8000)
-    - **Mobile App**: [http://localhost:8081](http://localhost:8081)
+4. Open:
+- Web: `http://localhost:3000`
+- API health: `http://localhost:8000/health`
+- API readiness: `http://localhost:8000/health/ready`
 
-4.  **Manual Start (Optional)**:
-    - Web: `nx serve web`
-    - API: `nx serve api`
-    - Mobile: `nx serve mobile`
+## OAuth Notes (Local)
 
-5.  **Build Everything**:
-    ```bash
-    pnpm run build
-    ```
+- Google OAuth callback route in backend: `/auth/google/callback`
+- Local redirect URI should be:
+  - `http://localhost:8000/auth/google/callback`
+- `FRONTEND_URL` should be:
+  - `http://localhost:3000`
 
-Refer to `walkthrough.md` for detailed milestones and `task.md` for progress tracking.
+## Repository Note
 
----
-
-## License
-
-This project is submitted as part of the Sophiie AI Agents Hackathon 2026.
+This repository currently documents and supports the web + API runtime flow.

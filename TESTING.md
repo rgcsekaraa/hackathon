@@ -9,16 +9,18 @@ This document provides step-by-step instructions to set up, run, and test Sophii
 - npm or yarn
 - Virtualenv (recommended for Python)
 
-## 1. Unified Start (Recommended)
+## 1. Start Services
 
-Run all services (Web, API, Mobile) in parallel:
+Run the web and API services in separate terminals:
+
 ```bash
-pnpm run dev
+pnpm run dev:api
+pnpm run dev:web
 ```
-This command uses Nx to launch:
+
+Services:
 - **Web Dashboard**: `http://localhost:3000`
 - **API Server**: `http://localhost:8000`
-- **Mobile (Expo)**: QR code in terminal
 
 ## 2. Manual Start (Individual Services)
 
@@ -33,16 +35,7 @@ cd apps/web && pnpm run dev
 
 ### Backend (API)
 ```bash
-npx nx serve api
-# or
 cd apps/api && uv run uvicorn main:app --reload
-```
-
-### Mobile (Expo)
-```bash
-npx nx serve mobile
-# or
-cd apps/mobile && npx expo start
 ```
 
 ## 3. Verification Steps

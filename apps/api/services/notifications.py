@@ -1,8 +1,8 @@
 """
-Push notification service -- sends Expo push notifications.
+Push notification service.
 
-Uses the Expo Push API to deliver native push notifications
-to registered mobile devices when workspace events occur.
+Uses a push provider HTTP API to deliver notifications
+to registered client tokens when workspace events occur.
 """
 
 import logging
@@ -12,7 +12,7 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
-EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send"
+PUSH_PROVIDER_URL = "https://exp.host/--/api/v2/push/send"
 
 # In-memory storage of push tokens per session.
 # In production this would be in a database.
@@ -20,7 +20,7 @@ push_tokens: dict[str, set[str]] = {}
 
 
 def register_token(session_id: str, token: str) -> None:
-    """Register an Expo push token for a session."""
+    """Register a push token for a session."""
     if session_id not in push_tokens:
         push_tokens[session_id] = set()
     push_tokens[session_id].add(token)
@@ -70,7 +70,7 @@ async def send_push(
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.post(
-                EXPO_PUSH_URL,
+                PUSH_PROVIDER_URL,
                 json=messages,
                 headers={
                     "Accept": "application/json",
