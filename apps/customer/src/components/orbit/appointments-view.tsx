@@ -10,10 +10,18 @@ import { useTheme } from "@mui/material/styles";
 import AccessTime from "@mui/icons-material/AccessTime";
 import { useAuth } from "@/lib/auth-context";
 import { useWorkspace } from "@/components/providers/WorkspaceProvider";
-import { type Appointment } from "@/lib/mock-data";
 import { useMemo } from "react";
 import PersonOutline from "@mui/icons-material/PersonOutline";
 import { OrbitLoader } from "@/lib/orbit-ui";
+
+interface Appointment {
+  id: string;
+  title: string;
+  client: string;
+  time: string;
+  duration: string;
+  status: "confirmed" | "pending" | "cancelled";
+}
 
 export default function AppointmentsView() {
   const theme = useTheme();

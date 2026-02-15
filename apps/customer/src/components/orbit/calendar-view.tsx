@@ -11,8 +11,16 @@ import { useTheme } from "@mui/material/styles";
 import ChevronLeft from "@mui/icons-material/ChevronLeft";
 import ChevronRight from "@mui/icons-material/ChevronRight";
 import { useWorkspace } from "@/components/providers/WorkspaceProvider";
-import { type CalendarEvent } from "@/lib/mock-data";
+
 import { OrbitLoader } from "@/lib/orbit-ui";
+
+interface CalendarEvent {
+  id: string;
+  title: string;
+  date: string;
+  time: string;
+  color: string;
+}
 
 const DAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 

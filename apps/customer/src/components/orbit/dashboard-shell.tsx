@@ -32,6 +32,7 @@ import LightModeOutlined from "@mui/icons-material/LightModeOutlined";
 import AutoAwesomeOutlined from "@mui/icons-material/AutoAwesomeOutlined";
 
 import { useAuth } from "@/lib/auth-context";
+import { useWorkspace } from "@/components/providers/WorkspaceProvider";
 import { useThemeMode } from "@/lib/theme-context";
 import AppointmentsView from "./appointments-view";
 import CalendarView from "./calendar-view";
@@ -55,6 +56,7 @@ export default function DashboardShell({ children }: { children?: React.ReactNod
   const isTablet = useMediaQuery(theme.breakpoints.between("sm", "md"));
   const { user, logout } = useAuth();
   const { mode, toggleMode } = useThemeMode();
+  const { activeCall, activeCaller } = useWorkspace();
   const [tab, setTab] = useState<TabValue>("today");
   const [notifOpen, setNotifOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -343,6 +345,42 @@ export default function DashboardShell({ children }: { children?: React.ReactNod
             pb: { xs: "80px", sm: isTablet || isDesktop ? 2 : "80px" },
           }}
         >
+          {/* Active Call Banner */}
+          {activeCall && (
+            <Box
+                sx={{
+                    bgcolor: "error.main",
+                    color: "white",
+                    px: 2,
+                    py: 1.5,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 2,
+                    boxShadow: 2,
+                    position: "sticky",
+                    top: 0,
+                    zIndex: 10,
+                }}
+            >
+                <Box sx={{ 
+                    width: 12, height: 12, borderRadius: "50%", bgcolor: "white",
+                    animation: "pulse 1.5s infinite"
+                }} />
+                <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                    Active Call: {activeCaller || "Unknown Caller"}
+                </Typography>
+                <style>
+                    {`
+                    @keyframes pulse {
+                        0% { opacity: 1; transform: scale(1); }
+                        50% { opacity: 0.5; transform: scale(1.2); }
+                        100% { opacity: 1; transform: scale(1); }
+                    }
+                    `}
+                </style>
+            </Box>
+          )}
+
           <Box sx={{ maxWidth: children ? '100%' : 720, mx: "auto", px: { xs: 0, sm: 1, md: 2 } }}>
             {mainContent}
           </Box>

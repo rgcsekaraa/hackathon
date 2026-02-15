@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     app_name: str = "Sophiie Orbit"
     debug: bool = False
 
+    # Internal API URL (used by voice workers to call back to the API)
+    api_url: str = "http://localhost:8000"
+
     # CORS -- comma-separated origins (set CORS_ORIGINS env var for production)
     cors_origins: list[str] = [
         "http://localhost:3000",

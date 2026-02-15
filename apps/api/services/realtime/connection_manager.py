@@ -101,6 +101,18 @@ class ConnectionManager:
             "decided_by": tradie_id,
         })
 
+    async def broadcast_call_status(
+        self, status: str, caller: str, lead_id: str, tradie_id: str | None = None
+    ) -> None:
+        """Broadcast real-time call status (started/ended)."""
+        await self.broadcast_all({
+            "type": "call_status",
+            "status": status,  # "started" | "ended"
+            "caller": caller,
+            "lead_id": lead_id,
+            "tradie_id": tradie_id,
+        })
+
     @property
     def active_count(self) -> int:
         """Total number of active connections across all tradies."""
