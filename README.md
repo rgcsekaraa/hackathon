@@ -258,9 +258,20 @@ The platform uses a **dual-worker** architecture for voice AI, powered by [LiveK
 
 ### Twilio Configuration (Optional)
 
-To enable inbound phone calls, configure your Twilio Phone Number:
-- **Voice Webhook URL:** `https://<your-public-url>/api/voice/incoming` (POST)
-- For local dev, use `ngrok http 8000` to get a public URL.
+To enable inbound phone calls, you must expose your local server to the internet using `ngrok` and configure your Twilio Phone Number:
+
+1.  **Start ngrok**:
+    ```bash
+    ngrok http 8000
+    ```
+2.  **Copy the Forwarding URL** (e.g., `https://1234-abcd.ngrok-free.app`).
+3.  **Configure Twilio**:
+    - Go to [Twilio Console > Phone Numbers](https://console.twilio.com/).
+    - Select your tracking number (e.g., `+91...`).
+    - Under **Voice & Fax**, set the **"A Call Comes In"** Webhook to:
+      `YOUR_NGROK_URL/api/voice/incoming`
+    - Ensure the method is `POST`.
+4.  **Save** and call the number to test.
 
 ---
 
