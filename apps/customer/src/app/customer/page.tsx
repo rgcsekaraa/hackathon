@@ -52,7 +52,7 @@ export default function PhotoUploadPage() {
         formData.append("file", file);
 
         const res = await fetch(
-          `${API_URL}/api/leads/${leadId}/photo`,
+          `${API_URL}/api/voice/photos/${leadId}`,
           { method: "POST", body: formData }
         );
 

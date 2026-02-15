@@ -15,6 +15,7 @@ import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import ListItemIcon from "@mui/material/ListItemIcon";
 import Divider from "@mui/material/Divider";
+import Switch from "@mui/material/Switch";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import Drawer from "@mui/material/Drawer";
 import List from "@mui/material/List";
@@ -59,10 +60,19 @@ export default function DashboardShell({ children }: { children?: React.ReactNod
   const isTablet = useMediaQuery(theme.breakpoints.between("sm", "md"));
   const { user, logout } = useAuth();
   const { mode, toggleMode } = useThemeMode();
-  const { activeCall, activeCaller, notifications, agentStage, connectionStatus } = useWorkspace();
+  const {
+    activeCall,
+    activeCaller,
+    notifications,
+    agentStage,
+    connectionStatus,
+    smsPhotoRequestEnabled,
+    setSmsPhotoRequestEnabled,
+  } = useWorkspace();
   const [tab, setTab] = useState<TabValue>("today");
   const [notifOpen, setNotifOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [savingSmsPref, setSavingSmsPref] = useState(false);
 
   const initials = user?.name
     ? user.name
@@ -354,6 +364,36 @@ export default function DashboardShell({ children }: { children?: React.ReactNod
                 <Typography variant="body1" sx={{ color: "text.primary" }}>
                   Profile
                 </Typography>
+              </MenuItem>
+              <MenuItem
+                onClick={async () => {
+                  if (savingSmsPref) return;
+                  setSavingSmsPref(true);
+                  await setSmsPhotoRequestEnabled(!smsPhotoRequestEnabled);
+                  setSavingSmsPref(false);
+                }}
+                sx={{ gap: 1.5, py: 1, justifyContent: "space-between" }}
+              >
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                  <ListItemIcon sx={{ minWidth: 0, color: "text.secondary" }}>
+                    <NotificationsOutlined fontSize="small" />
+                  </ListItemIcon>
+                  <Typography variant="body1" sx={{ color: "text.primary" }}>
+                    SMS Photo Request
+                  </Typography>
+                </Box>
+                <Switch
+                  edge="end"
+                  checked={smsPhotoRequestEnabled}
+                  disabled={savingSmsPref}
+                  onChange={async (event) => {
+                    event.stopPropagation();
+                    if (savingSmsPref) return;
+                    setSavingSmsPref(true);
+                    await setSmsPhotoRequestEnabled(event.target.checked);
+                    setSavingSmsPref(false);
+                  }}
+                />
               </MenuItem>
               <MenuItem
                 onClick={() => {

@@ -159,6 +159,7 @@ Mobile-first workspace for **Trade Professionals** to manage daily operations.
 - **Hands-free AI**: Voice Assistant (VoiceFab) with retry-on-failure, multi-state labels, and live transcripts.
 - **Quote Approvals**: Review and dispatch AI-generated quotes via push-banner modal.
 - **Smart States**: Empty-state illustrations, relative timestamps, and live connection indicators (Live/Offline chip in app bar).
+- **SMS Photo Request**: Toggle in the user menu to enable/disable automatic SMS photo requests after lead capture. Persisted per-profile via the API.
 - **Appointment Tracking**: Today's schedule with status-coded cards, connection badge, and friendly empty-day messaging.
 
 > [!TIP]

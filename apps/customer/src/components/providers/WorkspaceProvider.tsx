@@ -70,6 +70,8 @@ interface WorkspaceState {
   activeCaller: string | null;
   agentStage: AgentStage;
   lastVoiceEvent: string | null;
+  smsPhotoRequestEnabled: boolean;
+  setSmsPhotoRequestEnabled: (enabled: boolean) => Promise<boolean>;
 }
 
 const WorkspaceContext = createContext<WorkspaceState | null>(null);
@@ -139,6 +141,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   const [agentStage, setAgentStage] = useState<AgentStage>("idle");
   const [lastVoiceEvent, setLastVoiceEvent] = useState<string | null>(null);
   const latestLeadStatusRef = useRef<string | null>(null);
+  const [smsPhotoRequestEnabled, setSmsPhotoRequestEnabledState] = useState(true);
   
   const { token } = useAuth();
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -176,9 +179,75 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     }
   }, [token, API_URL, activeCall]);
 
+  const refreshSmsPreference = useCallback(async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_URL}/api/profile`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return;
+      const profile = await res.json();
+      const inboundConfig = profile?.inbound_config ?? {};
+      setSmsPhotoRequestEnabledState(Boolean(inboundConfig.sms_photo_request_enabled ?? true));
+    } catch (err) {
+      console.error("Failed to fetch profile SMS preference:", err);
+    }
+  }, [token, API_URL]);
+
   useEffect(() => {
-    if (token) refreshLeads();
-  }, [token, refreshLeads]);
+    if (token) {
+      refreshLeads();
+      refreshSmsPreference();
+    }
+  }, [token, refreshLeads, refreshSmsPreference]);
+
+  const setSmsPhotoRequestEnabled = useCallback(async (enabled: boolean) => {
+    if (!token) return false;
+    try {
+      const currentRes = await fetch(`${API_URL}/api/profile`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!currentRes.ok) return false;
+      const profile = await currentRes.json();
+      if (!profile) return false;
+
+      const payload = {
+        business_name: profile.business_name || "",
+        service_types: profile.service_types || [],
+        base_callout_fee: profile.base_callout_fee ?? 80.0,
+        hourly_rate: profile.hourly_rate ?? 95.0,
+        markup_pct: profile.markup_pct ?? 15.0,
+        min_labour_hours: profile.min_labour_hours ?? 1.0,
+        base_address: profile.base_address || "",
+        service_radius_km: profile.service_radius_km ?? 30.0,
+        travel_rate_per_km: profile.travel_rate_per_km ?? 1.5,
+        timezone: profile.timezone || "Australia/Brisbane",
+        working_hours: profile.working_hours || {},
+        inbound_config: {
+          ...(profile.inbound_config || {}),
+          sms_photo_request_enabled: enabled,
+        },
+      };
+
+      const updateRes = await fetch(`${API_URL}/api/profile`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!updateRes.ok) {
+        return false;
+      }
+      setSmsPhotoRequestEnabledState(enabled);
+      return true;
+    } catch (err) {
+      console.error("Failed to update profile SMS preference:", err);
+      return false;
+    }
+  }, [token, API_URL]);
 
   // Derive notifications from leads
   const notifications: Notification[] = leads.map(lead => {
@@ -460,6 +529,8 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     activeCaller,
     agentStage,
     lastVoiceEvent,
+    smsPhotoRequestEnabled,
+    setSmsPhotoRequestEnabled,
   };
 
   return (

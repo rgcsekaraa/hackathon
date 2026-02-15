@@ -311,9 +311,12 @@ async def _process_and_respond(
         else:
             slot_text = f"Our next available slot is {slot['display']}. "
 
-    # Send SMS photo link concurrently
+    inbound_cfg = session.tradie_ctx.get("inbound_config") or {}
+    sms_photo_enabled = bool(inbound_cfg.get("sms_photo_request_enabled", True))
+
+    # Send SMS photo link concurrently (if enabled in portal settings)
     sms_task = None
-    if session.caller != "unknown":
+    if sms_photo_enabled and session.caller != "unknown":
         try:
             from services.integrations.sms import send_photo_upload_link
             sms_task = asyncio.create_task(
@@ -328,12 +331,14 @@ async def _process_and_respond(
     if classified.suburb and classified.suburb != "unknown":
         response += f" in {classified.suburb}"
     response += f". {slot_text}"
-    response += (
-        f"A tradie from {business_name} will review your request and "
-        f"get back to you with a quote real quick. "
-        f"We've also sent you a text with a link to upload any photos of the issue. "
-        f"That'll help us nail down an accurate price for you. Cheers!"
-    )
+    response += f"A tradie from {business_name} will review your request and get back to you with a quote real quick. "
+    if sms_photo_enabled:
+        response += (
+            "We've also sent you a text with a link to upload any photos of the issue. "
+            "That'll help us nail down an accurate price for you. Cheers!"
+        )
+    else:
+        response += "We'll finalise your quote from the details shared on this call. Cheers!"
 
     await _send_tts_response(websocket, session, response)
 

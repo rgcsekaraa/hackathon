@@ -219,25 +219,7 @@ async def process_customer_message(
         message=f"Got it — looks like a {lead.job_type.replace('_', ' ')} job in {lead.customer_address or 'your area'}.",
     ))
 
-    # Step 2: Offer photo upload
-    if lead.customer_phone:
-        patches.append(LeadPatch(
-            type="step_changed",
-            lead_id=lead.id,
-            data={"step": "photo_offer", "message": "Would you like to send photos for a more accurate quote?"},
-        ))
-        await send_photo_upload_link(lead.customer_phone, lead.id)
-        lead.status = LeadStatus.MEDIA_PENDING.value
-
-    # Step 3: Calculate distance + pricing in parallel
-    patches.append(LeadPatch(
-        type="step_changed",
-        lead_id=lead.id,
-        data={"step": "pricing", "message": "Calculating your estimate..."},
-    ))
-    lead.status = LeadStatus.PRICING.value
-
-    # Get user profile for rates
+    # Load user profile once (needed for both SMS preference and pricing rates)
     result = await db.execute(
         select(UserProfile).where(UserProfile.id == lead.user_profile_id)
     )
@@ -246,6 +228,38 @@ async def process_customer_message(
     if not profile:
         logger.error("User profile not found: %s", lead.user_profile_id)
         return patches
+
+    # Step 2: Offer photo upload
+    inbound_cfg = profile.inbound_config or {}
+    sms_photo_enabled = bool(inbound_cfg.get("sms_photo_request_enabled", True))
+    if lead.customer_phone and sms_photo_enabled:
+        patches.append(LeadPatch(
+            type="step_changed",
+            lead_id=lead.id,
+            data={"step": "photo_offer", "message": "Would you like to send photos for a more accurate quote?"},
+        ))
+        await send_photo_upload_link(lead.customer_phone, lead.id)
+        lead.status = LeadStatus.MEDIA_PENDING.value
+    elif not sms_photo_enabled:
+        patches.append(LeadPatch(
+            type="step_changed",
+            lead_id=lead.id,
+            data={
+                "step": "photo_skipped",
+                "message": (
+                    "Photo request SMS is disabled in portal settings. "
+                    "Proceeding with AI-only quote negotiation from call details."
+                ),
+            },
+        ))
+
+    # Step 3: Calculate distance + pricing in parallel
+    patches.append(LeadPatch(
+        type="step_changed",
+        lead_id=lead.id,
+        data={"step": "pricing", "message": "Calculating your estimate..."},
+    ))
+    lead.status = LeadStatus.PRICING.value
 
     # Parallel integration calls
     distance_task = calculate_distance(profile.base_address, lead.customer_address)

@@ -27,16 +27,15 @@ async def analyse_image(image_url: str | None = None, image_bytes: bytes | None 
     if not image_url and not image_bytes:
         raise RuntimeError("Image analysis requires image_url or image_bytes")
 
-    # Try Google first when configured.
-    if settings.google_cloud_vision_key:
-        try:
-            return await _analyse_with_google_vision(image_url=image_url, image_bytes=image_bytes)
-        except Exception as exc:
-            logger.warning("Google Vision failed, trying OpenRouter vision fallback: %s", exc)
-
-    # Fallback to OpenRouter multimodal when configured.
+    # Try OpenRouter first (lower-cost default), then fall back to Google Vision.
     if settings.openrouter_api_key:
-        return await _analyse_with_openrouter(image_url=image_url, image_bytes=image_bytes)
+        try:
+            return await _analyse_with_openrouter(image_url=image_url, image_bytes=image_bytes)
+        except Exception as exc:
+            logger.warning("OpenRouter vision failed, trying Google Vision fallback: %s", exc)
+
+    if settings.google_cloud_vision_key:
+        return await _analyse_with_google_vision(image_url=image_url, image_bytes=image_bytes)
 
     raise RuntimeError(
         "No image analysis provider configured. Set GOOGLE_CLOUD_VISION_KEY or OPENROUTER_API_KEY."
@@ -87,9 +86,6 @@ async def _analyse_with_google_vision(
         (a.get("score", 0) for a in response.get("labelAnnotations", [])),
         default=0.0,
     )
-
-    if not labels and not objects:
-        raise RuntimeError("Google Vision returned no labels/objects")
 
     return PhotoAnalysis(
         labels=labels,
@@ -193,9 +189,6 @@ async def _analyse_with_openrouter(
         inferred_part, inferred_sku = _classify_part(labels, objects)
         detected_part = inferred_part
         sku_class = inferred_sku
-
-    if not labels and not objects:
-        raise RuntimeError("OpenRouter vision returned no labels/objects")
 
     return PhotoAnalysis(
         labels=labels,

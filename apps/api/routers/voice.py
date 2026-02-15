@@ -368,14 +368,19 @@ async def voice_webhook(request: Request):
             )
             return _twiml_noisy()
 
-        # Step 2: Classify (with tradie context) + SMS in parallel
+        # Step 2: Classify (with tradie context) and optionally send SMS link
         classify_task = _safe_classify(transcript_text, tradie_context=tradie_ctx_text)
-        sms_task = _send_photo_sms(str(caller), lead_id)
-
-        results = await asyncio.gather(classify_task, sms_task, return_exceptions=True)
-
-        # Handle classify result
-        classified = results[0]
+        inbound_cfg = tradie_ctx.get("inbound_config") or {}
+        sms_photo_enabled = bool(inbound_cfg.get("sms_photo_request_enabled", True))
+        if sms_photo_enabled:
+            results = await asyncio.gather(
+                classify_task,
+                _send_photo_sms(str(caller), lead_id),
+                return_exceptions=True,
+            )
+            classified = results[0]
+        else:
+            classified = await classify_task
         if isinstance(classified, Exception):
             logger.error("Classification failed: %s — using fallback", classified)
             from services.ai.langchain_agent import _fallback_classify
@@ -437,7 +442,12 @@ async def voice_webhook(request: Request):
 
         # Step 5: Return confirmation TwiML with business name + next slot
         job_display = classified.job_type.replace("_", " ")
-        return _twiml_confirmation(job_display, business_name, next_slot_display)
+        return _twiml_confirmation(
+            job_display,
+            business_name,
+            next_slot_display,
+            include_sms=sms_photo_enabled,
+        )
 
     except Exception as exc:
         logger.error("Voice webhook processing failed for call %s: %s", call_sid, exc, exc_info=True)
@@ -679,16 +689,26 @@ def _twiml_greeting(business_name: str = "") -> Response:
     return Response(content=xml, media_type="application/xml")
 
 
-def _twiml_confirmation(job_type: str, business_name: str = "our plumber", next_slot: str = "soon") -> Response:
+def _twiml_confirmation(
+    job_type: str,
+    business_name: str = "our plumber",
+    next_slot: str = "soon",
+    include_sms: bool = True,
+) -> Response:
     """Confirmation with business name and next available slot."""
+    sms_line = (
+        "We've also sent you a text with a link to upload any photos of the issue. "
+        "That'll help us nail down an accurate price for you. Cheers!"
+        if include_sms
+        else "We'll finalise your quote from the details shared on this call. Cheers!"
+    )
     xml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Say voice="Polly.Nicole" language="en-AU">
         Thanks mate! We've got your details — sounds like a {job_type} job.
         {business_name}'s next available slot is {next_slot}.
         A tradie will review your request and get back to you with a quote real quick.
-        We've also sent you a text with a link to upload any photos of the issue.
-        That'll help us nail down an accurate price for you. Cheers!
+        {sms_line}
     </Say>
     <Hangup />
 </Response>"""
