@@ -54,14 +54,18 @@ class Settings(BaseSettings):
     # OAuth2 / Google SSO
     google_client_id: str = ""
     google_client_secret: str = ""
-    # In dev, this might be http://localhost:8001/auth/google/callback
-    google_redirect_uri: str = "http://localhost:8001/auth/google/callback"
+    # Backend OAuth callback URL
+    google_redirect_uri: str = "http://localhost:8000/auth/google/callback"
 
     # Google Cloud Vision (image analysis)
     google_cloud_vision_key: str = ""
 
     # Google Maps / Distance Matrix
     google_maps_api_key: str = ""
+
+    # SerpAPI (optional live parts pricing via Google Shopping)
+    serpapi_api_key: str = ""
+    pricing_live_enabled: bool = True
 
     # Twilio (SMS)
     twilio_account_sid: str = ""
