@@ -253,6 +253,9 @@ pnpm worker:tradie
 
 # Terminal 5 — Customer Voice Worker (Receptionist)
 pnpm worker:customer
+
+# Terminal 6 — Lead Analysis Worker (Redis queue consumer)
+pnpm worker:lead
 ```
 
 > **Shortcut:** `pnpm dev` starts API + both portals via NX.
@@ -326,6 +329,7 @@ Set in `apps/api/.env`:
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `DEBUG` | Optional | FastAPI debug flag (`false` by default) |
+| `API_URL` | Optional | Internal API base URL used by worker callbacks |
 | `SECRET_KEY` | Yes | JWT signing key |
 | `DATABASE_URL` | Yes | DB URL (`sqlite+aiosqlite:///./spatial_voice.db` by default) |
 | `FRONTEND_URL` | Yes | Used in OAuth callback redirects and SMS photo links |
@@ -344,6 +348,7 @@ Set in `apps/api/.env`:
 | `GOOGLE_MAPS_API_KEY` | Optional | Distance Matrix primary provider |
 | `SERPAPI_API_KEY` | Optional | Live parts pricing via Google Shopping |
 | `PRICING_LIVE_ENABLED` | Optional | Toggle live pricing lookup |
+| `SMS_PHOTO_REQUEST_DEFAULT_ENABLED` | Optional | Default SMS photo-link behavior when profile flag is unset |
 | `TWILIO_ACCOUNT_SID` | Required for live SMS/calls | Twilio account SID |
 | `TWILIO_AUTH_TOKEN` | Required for live SMS/calls | Twilio auth token |
 | `TWILIO_PHONE_NUMBER` | Required for live SMS/calls | Purchased Twilio number |
@@ -378,15 +383,16 @@ NEXT_PUBLIC_WS_URL=ws://localhost:8000
 
 1. Configure `apps/api/.env` with:
 `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`, `LIVEKIT_URL`, `DEEPGRAM_API_KEY`, `ELEVENLABS_API_KEY`, `OPENROUTER_API_KEY`.
-2. Start API, portals, and both workers (`pnpm worker:tradie`, `pnpm worker:customer`).
-3. Expose API to Twilio:
+2. Enable Redis queue (`REDIS_ENABLED=true`) and set `REDIS_URL`.
+3. Start API, portals, and workers (`pnpm worker:tradie`, `pnpm worker:customer`, `pnpm worker:lead`).
+4. Expose API to Twilio:
 ```bash
 ngrok http 8000
 ```
-4. In Twilio number config:
+5. In Twilio number config:
 `A Call Comes In` -> `POST https://<your-ngrok-domain>/api/voice/incoming`.
-5. Test by calling your Twilio number.
-6. For SMS photo upload flow, keep `FRONTEND_URL` correct and ensure customer SMS notifications are enabled in Customer Portal.
+6. Test by calling your Twilio number.
+7. For SMS photo upload flow, keep `FRONTEND_URL` correct and ensure customer SMS notifications are enabled in Customer Portal.
 
 ---
 

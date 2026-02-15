@@ -15,6 +15,7 @@ cp apps/api/.env.example apps/api/.env
 ```dotenv
 # Core
 DEBUG=false
+API_URL=http://localhost:8000
 SECRET_KEY=change_me_to_a_long_random_secret
 DATABASE_URL=sqlite+aiosqlite:///./spatial_voice.db
 FRONTEND_URL=http://localhost:3000
@@ -39,6 +40,7 @@ GOOGLE_CLOUD_VISION_KEY=
 GOOGLE_MAPS_API_KEY=
 SERPAPI_API_KEY=
 PRICING_LIVE_ENABLED=true
+SMS_PHOTO_REQUEST_DEFAULT_ENABLED=true
 
 # Voice stack (required for live voice)
 DEEPGRAM_API_KEY=dg_xxx
@@ -75,6 +77,7 @@ DEFAULT_MARKUP_PCT=15.0
 ```dotenv
 # Core
 DEBUG=false
+API_URL=https://<api-domain>
 SECRET_KEY=<strong-random-secret>
 DATABASE_URL=<production-db-url>
 FRONTEND_URL=https://<customer-portal-domain>
@@ -95,6 +98,7 @@ GOOGLE_CLOUD_VISION_KEY=<optional>
 GOOGLE_MAPS_API_KEY=<optional>
 SERPAPI_API_KEY=<optional>
 PRICING_LIVE_ENABLED=true
+SMS_PHOTO_REQUEST_DEFAULT_ENABLED=true
 
 # Voice
 DEEPGRAM_API_KEY=<deepgram-key>
@@ -139,13 +143,14 @@ For production, switch to your HTTPS/WSS endpoints.
 
 ## 3) Live Inbound Call Checklist (Twilio + LiveKit)
 
-1. Confirm API + both portals + both workers are running.
-2. Expose API publicly for Twilio webhook testing:
+1. Ensure `REDIS_ENABLED=true` and Redis is reachable.
+2. Confirm API + both portals + all workers are running.
+3. Expose API publicly for Twilio webhook testing:
    - `ngrok http 8000`
-3. In Twilio Number config:
+4. In Twilio Number config:
    - `A Call Comes In` -> `POST https://<ngrok-domain>/api/voice/incoming`
-4. Place a real call to your Twilio number.
-5. Verify:
+5. Place a real call to your Twilio number.
+6. Verify:
    - Lead appears in customer/admin portals.
    - SMS photo link is sent when enabled.
    - Uploaded image triggers analysis pipeline.
@@ -163,4 +168,9 @@ lsof -nP -iTCP:3001 -sTCP:LISTEN
 
 # NX all-in-one
 npx nx run-many --target=serve --projects=api,customer,admin --parallel=3 --output-style=stream
+
+# Background workers
+pnpm worker:tradie
+pnpm worker:customer
+pnpm worker:lead
 ```
