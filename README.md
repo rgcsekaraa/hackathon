@@ -1,7 +1,25 @@
 # Sophiie Platform
 
-**Voice-first AI workspace for trade-service operations.**
+### Participant
 
+| Field | Your Answer |
+|-------|-------------|
+| **Name** | Chan RG |
+| **University / Employer** | SWE at SiteSee |
+
+### Project
+
+| Field | Your Answer |
+|-------|-------------|
+| **Project Name** | Sophiie Platform |
+| **One-Line Description** | Voice-first AI workspace for trade-service operations. |
+| **Demo Video Link** | |
+| **Tech Stack** | Next.js 16, React 19, MUI 7, FastAPI, Python 3.11, LiveKit Agents, SQLite/Postgres |
+| **AI Provider(s) Used** | Deepgram (STT), ElevenLabs (TTS), OpenRouter (LLM - Claude/GPT), LiveKit (Realtime) |
+
+### About Your Project
+
+#### What does it do?
 Sophiie captures customer intent from voice and text, classifies and enriches leads with AI, prices jobs using business-profile rules, and keeps dashboards synced in realtime — all from one continuous flow.
 
 ---
