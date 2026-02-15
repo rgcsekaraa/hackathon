@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import DashboardShell from "@/components/orbit/dashboard-shell";
-import { OrbitCard, OrbitHeader, OrbitButton } from "@/lib/orbit-ui";
+import SpaceShell from "@/components/space/space-shell";
+import { OrbitCard, OrbitButton } from "@/lib/orbit-ui";
 import { Button } from "@/components/ui/button";
 import { 
   Table, 
@@ -31,14 +31,10 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { 
   Activity,
-  CheckCircle2, 
-  Circle, 
   LayoutDashboard,
-  Loader2,
   Mail, 
   Monitor, 
   Plus, 
-  Settings2, 
   TrendingUp, 
   Users 
 } from "lucide-react";
@@ -125,15 +121,15 @@ export default function AdminPortal() {
   };
 
   return (
-    <DashboardShell isAdmin={true}>
-      <div className="p-12 space-y-12 max-w-7xl mx-auto">
+    <SpaceShell>
+      <div className="p-8 space-y-12 max-w-7xl mx-auto">
         <div className="flex justify-between items-start mb-12">
-          <div className="space-y-2">
-            <h1 className="text-5xl font-bold tracking-tighter text-white">Space</h1>
-            <p className="text-zinc-500 text-sm font-medium tracking-wide uppercase">Infrastructure Monitor</p>
+          <div className="space-y-4">
+            <h1 className="text-6xl font-black tracking-tighter text-white uppercase italic">SYSTEM SPACE</h1>
+            <p className="text-zinc-500 text-xs font-bold tracking-[0.3em] uppercase">Control Plane Infrastructure Monitor</p>
           </div>
-          <OrbitButton size="sm" className="h-10 px-6">
-            <Plus className="mr-2 h-4 w-4" /> Onboard Business
+          <OrbitButton size="sm" className="h-10 px-8 bg-white text-black hover:bg-zinc-200">
+            <Plus className="mr-2 h-4 w-4" /> SPAWN NODE
           </OrbitButton>
         </div>
 
@@ -145,12 +141,12 @@ export default function AdminPortal() {
             { label: "Conversion", val: `${(stats?.booking_rate ?? 0).toFixed(1)}%`, icon: TrendingUp },
             { label: "System Uptime", val: "100%", icon: LayoutDashboard },
           ].map((m, i) => (
-            <div key={i} className="p-4 border border-white/[0.03] bg-zinc-950/20 rounded-lg">
-              <div className="flex items-center justify-between opacity-40 mb-2">
-                <span className="text-[9px] font-bold uppercase tracking-widest">{m.label}</span>
+            <div key={i} className="p-5 border border-white/[0.05] bg-zinc-950/40 rounded-sm">
+              <div className="flex items-center justify-between opacity-30 mb-3">
+                <span className="text-[8px] font-black uppercase tracking-[0.2em]">{m.label}</span>
                 <m.icon className="h-3 w-3" />
               </div>
-              <div className="text-2xl font-medium tracking-tighter text-white">{m.val}</div>
+              <div className="text-3xl font-medium tracking-tighter text-white">{m.val}</div>
             </div>
           ))}
         </div>
@@ -158,44 +154,44 @@ export default function AdminPortal() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-12">
           {/* Managed Infrastructure */}
           <div className="lg:col-span-3">
-            <h3 className="text-sm font-bold uppercase tracking-widest text-zinc-500 mb-6">Cluster Management</h3>
-            <OrbitCard>
+            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-700 mb-6">Cluster Management</h3>
+            <div className="border border-white/[0.05] rounded-sm bg-zinc-950/20 backdrop-blur-sm">
               <Table>
                 <TableHeader>
                   <TableRow className="border-white/[0.05] hover:bg-transparent">
-                    <TableHead className="text-[9px] uppercase tracking-wider text-zinc-600">Node Identifier</TableHead>
-                    <TableHead className="text-[9px] uppercase tracking-wider text-zinc-600">Runtime State</TableHead>
-                    <TableHead className="text-[9px] uppercase tracking-wider text-zinc-600">Gateway Auth</TableHead>
-                    <TableHead className="text-right text-[9px] uppercase tracking-wider text-zinc-600">Control</TableHead>
+                    <TableHead className="text-[8px] uppercase tracking-[0.2em] text-zinc-600">SID</TableHead>
+                    <TableHead className="text-[8px] uppercase tracking-[0.2em] text-zinc-600">Runtime Status</TableHead>
+                    <TableHead className="text-[8px] uppercase tracking-[0.2em] text-zinc-600">Auth state</TableHead>
+                    <TableHead className="text-right text-[8px] uppercase tracking-[0.2em] text-zinc-600">CMD</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {loading ? (
                     <TableRow><TableCell colSpan={4} className="text-center py-20"><OrbitLoader /></TableCell></TableRow>
                   ) : customers.length === 0 ? (
-                    <TableRow><TableCell colSpan={4} className="text-center py-20 text-zinc-700 text-xs">No active nodes detected.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={4} className="text-center py-20 text-zinc-800 text-[10px] font-bold uppercase tracking-widest">No active nodes detected.</TableCell></TableRow>
                   ) : (
                     customers.map((customer) => (
                       <TableRow key={customer.id} className="border-white/[0.02] hover:bg-white/[0.01] transition-all group">
                         <TableCell className="py-4">
-                          <div className="text-sm font-medium text-zinc-300">{customer.business_name}</div>
-                          <div className="text-[9px] text-zinc-600 font-mono tracking-tighter mt-0.5 uppercase">{customer.id.split('-')[0]}</div>
+                          <div className="text-xs font-bold text-zinc-400 uppercase tracking-tight">{customer.business_name}</div>
+                          <div className="text-[8px] text-zinc-700 font-mono mt-0.5 uppercase tracking-tighter cursor-copy hover:text-zinc-500">{customer.id}</div>
                         </TableCell>
                         <TableCell>
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-sm text-[9px] font-bold bg-zinc-900 text-zinc-400 border border-white/[0.05]">
-                            ACTIVE.STABLE
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-none text-[8px] font-black bg-zinc-900 text-zinc-500 border border-white/[0.05]">
+                            STABLE.V1
                           </span>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                             <div className={cn("h-1.5 w-1.5 rounded-full", customer.is_gmail_setup ? "bg-blue-500" : "bg-zinc-800")} />
-                             <span className="text-[10px] font-medium text-zinc-500">
-                               {customer.is_gmail_setup ? "VERIFIED" : "PENDING"}
+                             <div className={cn("h-1 w-1 rounded-full", customer.is_gmail_setup ? "bg-white" : "bg-zinc-800")} />
+                             <span className="text-[8px] font-bold text-zinc-600 uppercase tracking-widest">
+                               {customer.is_gmail_setup ? "SECURED" : "PENDING"}
                              </span>
                           </div>
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button variant="ghost" size="sm" className="h-8 text-[9px] font-bold uppercase tracking-widest text-zinc-600 hover:text-white" onClick={() => handleOpenSetup(customer)}>
+                          <Button variant="ghost" size="sm" className="h-7 px-3 text-[8px] font-black uppercase tracking-[0.2em] text-zinc-700 hover:text-white hover:bg-white/[0.05]" onClick={() => handleOpenSetup(customer)}>
                              PARAMS
                           </Button>
                         </TableCell>
@@ -204,36 +200,36 @@ export default function AdminPortal() {
                   )}
                 </TableBody>
               </Table>
-            </OrbitCard>
+            </div>
           </div>
 
           {/* Onboarding Logic Console */}
           <div className="space-y-6">
-            <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-600">System Logs</h3>
+            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-700">System Logs</h3>
             <div className="space-y-4">
-              <div className="p-4 border border-white/[0.05] bg-zinc-900/30 rounded-lg">
-                <div className="flex items-center gap-3 mb-3">
-                  <Mail className="h-4 w-4 text-zinc-400" />
-                  <span className="text-xs font-bold text-zinc-200 uppercase">Onboarding Validation</span>
+              <div className="p-5 border border-white/[0.05] bg-zinc-900/30 rounded-none">
+                <div className="flex items-center gap-3 mb-4">
+                  <Mail className="h-3 w-3 text-zinc-500" />
+                  <span className="text-[9px] font-black text-zinc-300 uppercase tracking-[0.1em]">Onboarding Relay</span>
                 </div>
-                <p className="text-[11px] text-zinc-500 leading-relaxed mb-4">
-                  Manual verification of customer Gmail accounts is required to enable automated lead capture.
+                <p className="text-[10px] text-zinc-600 leading-relaxed mb-6 font-medium italic">
+                  Manual validation of node gateway credentials requested.
                 </p>
                 <OrbitButton 
                   size="sm" 
-                  className="w-full h-8 text-[10px] font-bold uppercase"
+                  className="w-full h-8 text-[9px] font-black uppercase tracking-[0.2em]"
                   onClick={() => selectedCustomer && handleUpdateCustomer(selectedCustomer.id, { is_gmail_setup: true })}
                 >
-                  Authorize Gmail Module
+                  AUTHORIZE GATEWAY
                 </OrbitButton>
               </div>
 
-              <div className="p-4 border border-white/[0.05] bg-zinc-900/30 rounded-lg opacity-50">
+              <div className="p-5 border border-white/[0.05] bg-zinc-900/10 rounded-none opacity-40">
                 <div className="flex items-center gap-3 mb-2">
-                  <Monitor className="h-4 w-4 text-zinc-600" />
-                  <span className="text-xs font-bold text-zinc-600 uppercase">Live Supervision</span>
+                  <Monitor className="h-3 w-3 text-zinc-700" />
+                  <span className="text-[9px] font-black text-zinc-700 uppercase tracking-[0.1em]">LIVE FEED</span>
                 </div>
-                <p className="text-[10px] text-zinc-700">Select a node to initiate live monitoring of AI voice sessions.</p>
+                <p className="text-[9px] text-zinc-800 font-bold uppercase tracking-tighter">SELECT NODE TO INITIATE PIPE</p>
               </div>
             </div>
           </div>
@@ -241,43 +237,43 @@ export default function AdminPortal() {
 
         {/* Setup Dialog */}
         <Dialog open={isSetupOpen} onOpenChange={setIsSetupOpen}>
-          <DialogContent className="bg-zinc-950 border-white/[0.05] text-white max-w-md shadow-3xl">
+          <DialogContent className="bg-zinc-950 border-white/[0.1] text-white max-w-sm rounded-none border-2">
             <DialogHeader>
-              <DialogTitle className="text-xl tracking-tight">Node Configuration</DialogTitle>
-              <DialogDescription className="text-zinc-500 text-xs">
-                Modifying runtime parameters for {selectedCustomer?.business_name}.
+              <DialogTitle className="text-sm font-black uppercase tracking-[0.3em]">NODE PARAMS</DialogTitle>
+              <DialogDescription className="text-zinc-600 text-[9px] font-bold uppercase tracking-widest">
+                RUNTIME CONFIGURATION OVERRIDE
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-6 py-6 border-y border-white/[0.03]">
+            <div className="grid gap-6 py-6 border-y border-white/[0.05]">
               <div className="grid gap-2">
-                <Label htmlFor="persona" className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold">AI Persona Architecture</Label>
+                <Label htmlFor="persona" className="text-[8px] uppercase tracking-[0.2em] text-zinc-600 font-black">AI_CORE_DIRECTIVES</Label>
                 <Textarea 
                   id="persona" 
-                  className="bg-zinc-900/50 border-white/[0.05] text-zinc-300 text-xs focus:border-white/[0.1] transition-all" 
-                  placeholder="Define AI behavioral directives..."
+                  className="bg-zinc-900/30 border-white/[0.1] text-zinc-400 text-[10px] font-mono focus:border-white/[0.2] transition-all rounded-none" 
+                  placeholder="INPUT DIRECTIVES..."
                   rows={6}
                 />
               </div>
               <div className="grid gap-2">
-                <Label className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold">Primary Inbound Source</Label>
+                <Label className="text-[8px] uppercase tracking-[0.2em] text-zinc-600 font-black">PRIMARY_INBOUND</Label>
                 <Select defaultValue="twilio">
-                  <SelectTrigger className="bg-zinc-900/50 border-white/[0.05] text-zinc-300 h-10">
-                    <SelectValue placeholder="Select carrier" />
+                  <SelectTrigger className="bg-zinc-900/30 border-white/[0.1] text-zinc-400 h-9 rounded-none text-[10px] font-bold">
+                    <SelectValue placeholder="SELECT_CARRIER" />
                   </SelectTrigger>
-                  <SelectContent className="bg-zinc-950 border-white/[0.05] text-white">
-                    <SelectItem value="twilio">Twilio Cloud Voice</SelectItem>
-                    <SelectItem value="google">Google Voice (Enterprise)</SelectItem>
+                  <SelectContent className="bg-zinc-950 border-white/[0.1] text-white rounded-none">
+                    <SelectItem value="twilio" className="text-[10px] font-bold">TWILIO_PSTN</SelectItem>
+                    <SelectItem value="google" className="text-[10px] font-bold">GOOGLE_CLOUD</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
-            <DialogFooter className="gap-2">
-              <Button variant="ghost" onClick={() => setIsSetupOpen(false)} className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Cancel</Button>
-              <OrbitButton className="h-10 px-8 text-[11px] font-bold uppercase tracking-widest bg-white/[0.05] text-white border-white/[0.1]">Apply Runtime Update</OrbitButton>
+            <DialogFooter className="gap-2 sm:justify-center">
+              <Button variant="ghost" onClick={() => setIsSetupOpen(false)} className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-700">CANCEL</Button>
+              <OrbitButton className="h-9 px-8 text-[9px] font-black uppercase tracking-[0.2em] bg-white text-black hover:bg-zinc-200">COMMIT_UPDATE</OrbitButton>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
-    </DashboardShell>
+    </SpaceShell>
   );
 }

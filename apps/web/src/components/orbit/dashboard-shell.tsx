@@ -48,13 +48,7 @@ const TAB_CONFIG: { value: TabValue; label: string; icon: React.ReactElement }[]
   { value: "enquiries", label: "Enquiries", icon: <QuestionAnswerOutlined /> },
 ];
 
-export default function DashboardShell({ 
-  children,
-  isAdmin = false
-}: { 
-  children?: React.ReactNode;
-  isAdmin?: boolean;
-}) {
+export default function DashboardShell({ children }: { children?: React.ReactNode }) {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
@@ -82,8 +76,6 @@ export default function DashboardShell({
 
   const sideWidth = isDesktop ? 240 : 72;
 
-  // If children are provided, we treat this as a layout wrapper (Sophiie Space)
-  // If not, we use the internal tab system (Sophiie Orbit)
   const mainContent = children || defaultContent[tab];
 
   return (
@@ -122,15 +114,15 @@ export default function DashboardShell({
                 variant="h6"
                 sx={{ color: "text.primary", fontSize: "0.95rem", fontWeight: 600, letterSpacing: "-0.01em" }}
               >
-                Sophie Space
+                Sophie Orbit
               </Typography>
             )}
           </Box>
 
           <Divider sx={{ borderColor: "divider" }} />
 
-          {/* Nav items - Only show if Orbit mode */}
-          {!isAdmin && (
+          {/* Nav items - Only show if using tab system */}
+          {!children && (
             <List sx={{ px: 1, pt: 1, flex: 1 }}>
               {TAB_CONFIG.map((t) => (
                 <ListItemButton
@@ -170,7 +162,7 @@ export default function DashboardShell({
           )}
 
           {/* Theme toggle at bottom of rail */}
-          <Box sx={{ px: 1, pb: 2, mt: isAdmin ? 'auto' : 0 }}>
+          <Box sx={{ px: 1, pb: 2, mt: children ? 'auto' : 0 }}>
             <ListItemButton
               onClick={toggleMode}
               sx={{
@@ -231,7 +223,7 @@ export default function DashboardShell({
                 fontWeight: isDesktop || isTablet ? 500 : 400,
               }}
             >
-              {isDesktop || isTablet ? (isAdmin ? "Space" : TAB_CONFIG.find((t) => t.value === tab)?.label) : ""}
+              {isDesktop || isTablet ? (children ? "Orbit" : TAB_CONFIG.find((t) => t.value === tab)?.label) : ""}
             </Typography>
 
             {/* Mobile theme toggle */}
@@ -246,30 +238,28 @@ export default function DashboardShell({
               </IconButton>
             )}
 
-            {/* Notification bell - Hide for Admin */}
-            {!isAdmin && (
-              <IconButton
-                onClick={() => setNotifOpen(true)}
-                aria-label="Open notifications"
-                sx={{ color: "text.secondary", mr: 0.5 }}
+            {/* Notification bell */}
+            <IconButton
+              onClick={() => setNotifOpen(true)}
+              aria-label="Open notifications"
+              sx={{ color: "text.secondary", mr: 0.5 }}
+            >
+              <Badge
+                badgeContent={2}
+                sx={{
+                  "& .MuiBadge-badge": {
+                    bgcolor: isDark ? "#8AB4F8" : "#1A73E8",
+                    color: isDark ? "#0E0E0E" : "#FFFFFF",
+                    fontSize: "0.65rem",
+                    fontWeight: 700,
+                    minWidth: 18,
+                    height: 18,
+                  },
+                }}
               >
-                <Badge
-                  badgeContent={2}
-                  sx={{
-                    "& .MuiBadge-badge": {
-                      bgcolor: isDark ? "#8AB4F8" : "#1A73E8",
-                      color: isDark ? "#0E0E0E" : "#FFFFFF",
-                      fontSize: "0.65rem",
-                      fontWeight: 700,
-                      minWidth: 18,
-                      height: 18,
-                    },
-                  }}
-                >
-                  <NotificationsOutlined />
-                </Badge>
-              </IconButton>
-            )}
+                <NotificationsOutlined />
+              </Badge>
+            </IconButton>
 
             {/* Avatar */}
             <IconButton
@@ -353,7 +343,7 @@ export default function DashboardShell({
             pb: { xs: "80px", sm: isTablet || isDesktop ? 2 : "80px" },
           }}
         >
-          <Box sx={{ maxWidth: isAdmin ? '100%' : 720, mx: "auto", px: { xs: 0, sm: 1, md: 2 } }}>
+          <Box sx={{ maxWidth: children ? '100%' : 720, mx: "auto", px: { xs: 0, sm: 1, md: 2 } }}>
             {mainContent}
           </Box>
         </Box>
@@ -385,14 +375,14 @@ export default function DashboardShell({
         )}
       </Box>
 
-      {/* Voice FAB - Only for customer portal */}
-      {!isAdmin && <VoiceFab />}
+      {/* Voice FAB */}
+      {!children && <VoiceFab />}
 
-      {/* Notifications drawer - Only for customer portal */}
-      {!isAdmin && <NotificationsPanel open={notifOpen} onClose={() => setNotifOpen(false)} />}
+      {/* Notifications drawer */}
+      <NotificationsPanel open={notifOpen} onClose={() => setNotifOpen(false)} />
 
-      {/* In-app push notification system - Only for customer portal */}
-      {!isAdmin && <EnquiryPushSystem />}
+      {/* In-app push notification system */}
+      {!children && <EnquiryPushSystem />}
     </Box>
   );
 }
