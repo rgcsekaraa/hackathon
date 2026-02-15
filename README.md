@@ -13,7 +13,7 @@
 |-------|-------------|
 | **Project Name** | Sophiie Platform |
 | **One-Line Description** | Voice-first AI workspace for trade-service operations. |
-| **Demo Video Link** | |
+| **Demo Video Link** | [Watch Demo](https://www.loom.com/share/41331cf4fa354f959ec51f4a90569983) |
 | **Tech Stack** | Next.js 16, React 19, MUI 7, FastAPI, Python 3.11, LiveKit Agents, SQLite/Postgres |
 | **AI Provider(s) Used** | Deepgram (STT), ElevenLabs (TTS), OpenRouter (LLM - Claude/GPT), LiveKit (Realtime) |
 
