@@ -8,11 +8,11 @@ import { useEffect } from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 
-function DashboardContent() {
+function PortalContent() {
   return <DashboardShell />;
 }
 
-export default function DashboardPage() {
+export default function CustomerPortalPage() {
   const { token, isLoading } = useAuth();
   const router = useRouter();
 
@@ -32,7 +32,7 @@ export default function DashboardPage() {
 
   return (
     <WorkspaceProvider>
-      <DashboardContent />
+      <PortalContent />
     </WorkspaceProvider>
   );
 }

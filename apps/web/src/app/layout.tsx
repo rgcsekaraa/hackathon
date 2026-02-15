@@ -1,23 +1,24 @@
 import type { Metadata, Viewport } from "next";
+import "./globals.css";
 
-import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { QueryProvider } from "@/components/providers/QueryProvider";
-import { AuthProvider } from "@/context/AuthContext";
+import { AuthProvider } from "@/components/providers/AuthProvider";
+import { AppThemeProvider } from "@/lib/theme-context";
 import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
 
 export const metadata: Metadata = {
-  title: "Sophiie Space | Realtime AI Workspace",
+  title: "Sophiie Orbit | Customer Portal",
   description: "Advanced AI orchestration for trades business workflow.",
   manifest: "/manifest.json",
   viewport: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0",
-  themeColor: "#6366f1",
+  themeColor: "#8AB4F8",
   openGraph: {
-    title: "Sophiie Space",
+    title: "Sophiie Orbit",
   },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Sophiie Space",
+    title: "Sophiie Orbit",
   },
 };
 
@@ -31,30 +32,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <head>
-        <link
-          rel="preconnect"
-          href="https://fonts.googleapis.com"
-        />
-        <link
-          rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossOrigin="anonymous"
-        />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-          rel="stylesheet"
-        />
-        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
-      </head>
-      <body>
+    <html lang="en" suppressHydrationWarning>
+      <body className="antialiased">
         <AuthProvider>
-          <ThemeProvider>
+          <AppThemeProvider>
             <QueryProvider>
               {children}
             </QueryProvider>
-          </ThemeProvider>
+          </AppThemeProvider>
         </AuthProvider>
         <ServiceWorkerRegistration />
       </body>
