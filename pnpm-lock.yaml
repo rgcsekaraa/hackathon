@@ -8,6 +8,9 @@ importers:
 
   .:
     devDependencies:
+      '@nx/nx-darwin-arm64':
+        specifier: 22.5.0
+        version: 22.5.0
       nx:
         specifier: ^22.5.1
         version: 22.5.1
@@ -1564,6 +1567,11 @@ packages:
   '@nolyfill/is-core-module@1.0.39':
     resolution: {integrity: sha512-nn5ozdjYQpUCZlWGuxcJY/KpxkWQs4DcbMCmKojjyrYDEAGy4Ce19NN4v5MduafTwJlbKc99UA8YhSVqq9yPZA==}
     engines: {node: '>=12.4.0'}
+
+  '@nx/nx-darwin-arm64@22.5.0':
+    resolution: {integrity: sha512-MHnzv6tzucvLsh4oS9FTepj+ct/o8/DPXrQow+9Jid7GSgY59xrDX/8CleJOrwL5lqKEyGW7vv8TR+4wGtEWTA==}
+    cpu: [arm64]
+    os: [darwin]
 
   '@nx/nx-darwin-x64@22.5.1':
     resolution: {integrity: sha512-81Lb7+rp3Qltpgy33Kc1qxk+8IWqZLhqvdLdRFSVV1FN1pPSJDFKyPjCn9oMpRryNPSJ8DgZDpfIaVVyP85rUw==}
@@ -8174,6 +8182,8 @@ snapshots:
       fastq: 1.20.1
 
   '@nolyfill/is-core-module@1.0.39': {}
+
+  '@nx/nx-darwin-arm64@22.5.0': {}
 
   '@nx/nx-darwin-x64@22.5.1':
     optional: true

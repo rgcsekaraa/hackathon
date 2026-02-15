@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   app:
     build:
@@ -8,8 +6,14 @@ services:
     ports:
       - "3000:3000"
       - "8000:8000"
+    env_file:
+      - ./apps/api/.env
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8000
-      - DATABASE_URL=sqlite+aiosqlite:///./apps/api/spatial_voice.db
+      - DATABASE_URL=sqlite+aiosqlite:///./spatial_voice.db
     volumes:
-      - ./apps/api/spatial_voice.db:/app/apps/api/spatial_voice.db
+      - db-data:/app/apps/api
+    restart: unless-stopped
+
+volumes:
+  db-data:
