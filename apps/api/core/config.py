@@ -41,10 +41,10 @@ class Settings(BaseSettings):
     secret_key: str = "supersecret_change_me_in_prod"
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 60 * 24 * 7  # 7 days for dev convenience
-    admin_emails: list[str] = ["superadmin@sophiie.com"]
+    admin_emails: list[str] = ["superadmin@sophiie.ai"]
     bootstrap_admin_enabled: bool = True
     bootstrap_admin_alias: str = "demo-SA"
-    bootstrap_admin_email: str = "superadmin@sophiie.com"
+    bootstrap_admin_email: str = "superadmin@sophiie.ai"
     bootstrap_admin_password: str = "d3m0-p@s5"
     bootstrap_admin_name: str = "Demo Super Admin"
 

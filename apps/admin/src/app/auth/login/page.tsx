@@ -357,7 +357,7 @@ export default function AdminLoginPage() {
                 letterSpacing: "0.02em",
               }}
             >
-              Demo: <code>superadmin@sophiie.com</code> / <code>d3m0-p@s5</code>
+              Demo: <code>superadmin@sophiie.ai</code> / <code>d3m0-p@s5</code>
             </Typography>
           </Box>
         </Box>

@@ -86,7 +86,7 @@ function OrbitRings({ color }: { color: string }) {
 
 export default function LoginScreen() {
   const adminAlias = process.env.NEXT_PUBLIC_BOOTSTRAP_ADMIN_ALIAS || "demo-SA";
-  const adminEmail = process.env.NEXT_PUBLIC_BOOTSTRAP_ADMIN_EMAIL || "superadmin@sophiie.com";
+  const adminEmail = process.env.NEXT_PUBLIC_BOOTSTRAP_ADMIN_EMAIL || "superadmin@sophiie.ai";
 
   const { login } = useAuth();
   const { toggleMode } = useThemeMode();
