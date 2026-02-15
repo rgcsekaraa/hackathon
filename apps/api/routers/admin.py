@@ -63,7 +63,8 @@ async def onboard_customer(
         base_callout_fee=profile_in.base_callout_fee,
         hourly_rate=profile_in.hourly_rate,
         timezone=profile_in.timezone,
-        working_hours=profile_in.working_hours
+        working_hours=profile_in.working_hours,
+        inbound_config=profile_in.inbound_config,
     )
     db.add(new_profile)
     
@@ -116,7 +117,7 @@ async def update_customer_profile(
     ALLOWED_FIELDS = {
         "business_name", "service_types", "base_callout_fee", "hourly_rate",
         "markup_pct", "min_labour_hours", "base_address", "service_radius_km",
-        "travel_rate_per_km", "timezone", "working_hours",
+        "travel_rate_per_km", "timezone", "working_hours", "inbound_config",
     }
     for key, value in update_fields.items():
         if key in ALLOWED_FIELDS:

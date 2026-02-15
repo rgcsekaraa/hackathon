@@ -55,6 +55,7 @@ class UserProfileCreate(BaseModel):
     travel_rate_per_km: float = 1.50
     timezone: str = "Australia/Brisbane"  # IANA timezone
     working_hours: dict[str, list[str]] = Field(default_factory=dict)
+    inbound_config: dict = Field(default_factory=dict)
 
 
 class UserProfileResponse(BaseModel):
@@ -71,6 +72,7 @@ class UserProfileResponse(BaseModel):
     travel_rate_per_km: float
     timezone: str
     working_hours: dict[str, list[str]]
+    inbound_config: dict
     is_active: bool
     created_at: datetime
     updated_at: datetime

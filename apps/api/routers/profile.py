@@ -50,6 +50,7 @@ async def create_or_update_profile(
         profile.travel_rate_per_km = data.travel_rate_per_km
         profile.timezone = data.timezone
         profile.working_hours = data.working_hours
+        profile.inbound_config = data.inbound_config
     else:
         # Create new
         profile = UserProfile(
@@ -66,6 +67,7 @@ async def create_or_update_profile(
             travel_rate_per_km=data.travel_rate_per_km,
             timezone=data.timezone,
             working_hours=data.working_hours,
+            inbound_config=data.inbound_config,
         )
         db.add(profile)
 
