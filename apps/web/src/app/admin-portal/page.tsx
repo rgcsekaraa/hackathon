@@ -125,17 +125,17 @@ export default function AdminPortal() {
   };
 
   return (
-    <DashboardShell>
+    <DashboardShell isAdmin={true}>
       <div className="p-12 space-y-12 max-w-7xl mx-auto">
-        <OrbitHeader 
-          title="Space" 
-          subtitle="Super-Admin Infrastructure Monitor"
-          actions={
-            <OrbitButton size="sm" className="h-10 px-6">
-              <Plus className="mr-2 h-4 w-4" /> Onboard Business
-            </OrbitButton>
-          }
-        />
+        <div className="flex justify-between items-start mb-12">
+          <div className="space-y-2">
+            <h1 className="text-5xl font-bold tracking-tighter text-white">Space</h1>
+            <p className="text-zinc-500 text-sm font-medium tracking-wide uppercase">Infrastructure Monitor</p>
+          </div>
+          <OrbitButton size="sm" className="h-10 px-6">
+            <Plus className="mr-2 h-4 w-4" /> Onboard Business
+          </OrbitButton>
+        </div>
 
         {/* Minimal Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -145,13 +145,13 @@ export default function AdminPortal() {
             { label: "Conversion", val: `${(stats?.booking_rate ?? 0).toFixed(1)}%`, icon: TrendingUp },
             { label: "System Uptime", val: "100%", icon: LayoutDashboard },
           ].map((m, i) => (
-            <OrbitCard key={i} className="p-4 py-6">
-              <div className="flex items-center justify-between opacity-50 mb-4">
-                <span className="text-[10px] font-bold uppercase tracking-widest">{m.label}</span>
+            <div key={i} className="p-4 border border-white/[0.03] bg-zinc-950/20 rounded-lg">
+              <div className="flex items-center justify-between opacity-40 mb-2">
+                <span className="text-[9px] font-bold uppercase tracking-widest">{m.label}</span>
                 <m.icon className="h-3 w-3" />
               </div>
-              <div className="text-3xl font-medium tracking-tighter text-white">{m.val}</div>
-            </OrbitCard>
+              <div className="text-2xl font-medium tracking-tighter text-white">{m.val}</div>
+            </div>
           ))}
         </div>
 
@@ -163,10 +163,10 @@ export default function AdminPortal() {
               <Table>
                 <TableHeader>
                   <TableRow className="border-white/[0.05] hover:bg-transparent">
-                    <TableHead className="text-[10px] uppercase tracking-wider text-zinc-500">Node Identifier</TableHead>
-                    <TableHead className="text-[10px] uppercase tracking-wider text-zinc-500">Process State</TableHead>
-                    <TableHead className="text-[10px] uppercase tracking-wider text-zinc-500">Gmail Auth</TableHead>
-                    <TableHead className="text-right text-[10px] uppercase tracking-wider text-zinc-500">Admin</TableHead>
+                    <TableHead className="text-[9px] uppercase tracking-wider text-zinc-600">Node Identifier</TableHead>
+                    <TableHead className="text-[9px] uppercase tracking-wider text-zinc-600">Runtime State</TableHead>
+                    <TableHead className="text-[9px] uppercase tracking-wider text-zinc-600">Gateway Auth</TableHead>
+                    <TableHead className="text-right text-[9px] uppercase tracking-wider text-zinc-600">Control</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -177,9 +177,9 @@ export default function AdminPortal() {
                   ) : (
                     customers.map((customer) => (
                       <TableRow key={customer.id} className="border-white/[0.02] hover:bg-white/[0.01] transition-all group">
-                        <TableCell className="py-6">
-                          <div className="font-medium text-zinc-200">{customer.business_name}</div>
-                          <div className="text-[10px] text-zinc-600 font-mono tracking-tight mt-1">{customer.id}</div>
+                        <TableCell className="py-4">
+                          <div className="text-sm font-medium text-zinc-300">{customer.business_name}</div>
+                          <div className="text-[9px] text-zinc-600 font-mono tracking-tighter mt-0.5 uppercase">{customer.id.split('-')[0]}</div>
                         </TableCell>
                         <TableCell>
                           <span className="inline-flex items-center px-2 py-0.5 rounded-sm text-[9px] font-bold bg-zinc-900 text-zinc-400 border border-white/[0.05]">
@@ -195,8 +195,8 @@ export default function AdminPortal() {
                           </div>
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button variant="ghost" size="sm" className="h-8 text-[10px] font-bold uppercase tracking-widest text-zinc-500 hover:text-white" onClick={() => handleOpenSetup(customer)}>
-                             Configure
+                          <Button variant="ghost" size="sm" className="h-8 text-[9px] font-bold uppercase tracking-widest text-zinc-600 hover:text-white" onClick={() => handleOpenSetup(customer)}>
+                             PARAMS
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -208,8 +208,8 @@ export default function AdminPortal() {
           </div>
 
           {/* Onboarding Logic Console */}
-          <div className="space-y-8">
-            <h3 className="text-sm font-bold uppercase tracking-widest text-zinc-500">System Logs</h3>
+          <div className="space-y-6">
+            <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-600">System Logs</h3>
             <div className="space-y-4">
               <div className="p-4 border border-white/[0.05] bg-zinc-900/30 rounded-lg">
                 <div className="flex items-center gap-3 mb-3">
