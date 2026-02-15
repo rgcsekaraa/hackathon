@@ -20,78 +20,161 @@
 ### About Your Project
 
 #### What does it do?
-Sophiie captures customer intent from voice and text, classifies and enriches leads with AI, prices jobs using business-profile rules, and keeps dashboards synced in realtime — all from one continuous flow.
+
+Sophiie is a voice-first AI platform that automates the end-to-end workflow for trade-service businesses — from customer intake to job confirmation. A customer calls a tradie's business number. Instead of hitting voicemail, an AI receptionist picks up, understands the problem, collects details, and logs a structured lead in real-time.
+
+The system then enriches that lead automatically: it calculates travel distance, estimates pricing using the tradie's own rates and live parts lookup, and can even analyse photos of the job (e.g. a leaky tap) using vision AI. The tradie sees the fully enriched lead appear live on their dashboard and can approve the quote with one tap. Once approved, the AI calls the customer back, confirms the price and time, and books the job.
+
+Everything flows through two portals: **Sophiie Orbit** (the tradie's mobile-first workspace) and **Sophiie Space** (the admin control plane for onboarding and monitoring).
+
+#### How does the interaction work?
+
+The primary interaction is **voice**. A customer dials a phone number — the AI receptionist answers immediately, has a natural conversation, and extracts structured data (name, address, issue, urgency). After the call, the system sends an SMS with a photo-upload link for visual assessment.
+
+On the tradie side, the **VoiceFab** button provides a hands-free assistant. Tradies can ask "What jobs do I have tomorrow?" or say "Text the customer I'm running 15 minutes late" — the AI handles it through natural speech, pushing UI updates to the dashboard in real-time (SDUI).
+
+Both portals show **live connection status**, **real-time WebSocket updates**, and **push-banner alerts** when new leads arrive. The entire system stays synchronised through persistent WebSocket connections.
+
+#### What makes it special?
+
+1. **Multimodal pipeline** — voice, text, photo, and vision AI all feed into the same lead enrichment flow.
+2. **Dual-worker architecture** — two specialised LiveKit voice agents (receptionist + tradie copilot) dispatch automatically based on caller identity.
+3. **SDUI (Server-Driven UI)** — the AI assistant can push UI components to the dashboard in real-time, not just respond with text.
+4. **Full loop automation** — from intake → enrichment → pricing → quote → confirmation → booking, with human-in-the-loop only at the approval step.
+5. **Production-grade UX** — not a chatbot demo. Proper empty states, error handling, connection indicators, Snackbar feedback, and responsive layouts.
 
 ---
 
 ## Architecture
 
-## Data Flow
-
 ### System Architecture
 ![Architecture Diagram](./docs/diagrams/architecture-diagram.png)
 
-This diagram outlines how the Sophiie API orchestrates various services and AI providers to keep the Orbit and Space portals synced in real-time.
+The platform is a **monorepo** (`pnpm workspaces` + `NX`) with three main packages and a shared backend:
+
+```
+hackathon/
+├── apps/
+│   ├── customer/    → Sophiie Orbit (Next.js 16, port 3000)
+│   ├── admin/       → Sophiie Space  (Next.js 16, port 3001)
+│   └── api/         → FastAPI backend (port 8000)
+│       ├── routers/         → REST + WebSocket endpoints
+│       ├── services/
+│       │   ├── voice/       → LiveKit agent workers
+│       │   ├── integrations/→ Vision, Distance, Pricing, SMS
+│       │   └── realtime/    → WebSocket connection manager
+│       ├── models/          → SQLAlchemy ORM models
+│       └── schemas/         → Pydantic request/response schemas
+├── docs/diagrams/           → Architecture & sequence diagrams
+└── nx.json                  → NX workspace config
+```
+
+#### Layer Breakdown
+
+| Layer | Responsibility | Key Files |
+|-------|---------------|-----------|
+| **Frontends** | Two Next.js 16 apps (App Router + Turbopack). Orbit is the tradie workspace; Space is the admin console. Both use MUI 7 with dark/light mode. | `apps/customer/`, `apps/admin/` |
+| **API Gateway** | FastAPI with async endpoints, JWT auth, WebSocket hubs for sessions and leads. Handles CORS, error boundaries, and request validation. | `apps/api/main.py`, `routers/` |
+| **Voice Workers** | Two LiveKit Agent workers. The **Customer Worker** acts as a receptionist (inbound calls via Twilio → LiveKit). The **Tradie Worker** acts as a copilot (VoiceFab → LiveKit). Both use Deepgram STT + ElevenLabs TTS. | `services/voice/customer_worker.py`, `services/voice/tradie_worker.py` |
+| **Lead Orchestrator** | Coordinates enrichment after a lead is captured: runs distance calculation (Google Maps), vision analysis (Google Vision / OpenRouter), and pricing (business-profile rates + live SerpAPI parts lookup). | `services/lead_orchestrator.py` |
+| **Realtime Hub** | WebSocket connection manager broadcasts lead events, call status, and SDUI patches to all connected clients. Supports per-user and per-role targeting. | `services/realtime/connection_manager.py` |
+| **Database** | SQLite via SQLAlchemy 2.0 (async, aiosqlite). Models: User, UserProfile, LeadSession. Auto-init and seed on startup. | `models/`, `db/` |
+
+#### Data Flow
+
+When a customer calls:
+
+1. **Twilio** receives the call and forwards to `/api/voice/incoming`
+2. The API creates a **LiveKit room** and connects the **Customer Worker** agent
+3. The agent conducts a natural conversation, extracting structured lead data
+4. On call end, the lead is persisted and the **Lead Orchestrator** enriches it:
+   - Distance calculation (Google Maps API)
+   - Photo analysis (Google Vision → part identification)
+   - Price estimation (business rates + live SerpAPI hardware-store lookup)
+5. The enriched lead is broadcast via **WebSocket** to all connected Orbit dashboards
+6. The tradie reviews, approves, and the system triggers an outbound confirmation call
 
 ### End-to-End Sequence (Leaky Tap Scenario)
 ![Sequence Diagram](./docs/diagrams/sequence-diagram.png)
 
-This flow demonstrates the multimodal journey from a voice call to an automated booking.
-
-### Simple Flow Explanation
-1.  **Smart Intake**: A customer calls. The AI receptionist answers, identifies the issue (e.g., a "leaky tap"), and sends an automated text message asking for a photo.
-2.  **Multimodal Analysis**: The customer uploads a photo. The system uses **Google Vision** to recognize the specific part and looks up the current price at local hardware stores.
-3.  **Automatic Pricing**: The backend calculates travel distance via **Google Maps** and combines the part price, labor rate, and call-out fee into a complete quote.
-4.  **Real-Time Dashboard**: The tradie sees the lead, the photo, and the price appear instantly on their dashboard. They can approve the pre-calculated quote with one click.
-5.  **Automated Booking**: Once approved, the AI tells the customer the price, confirms the time, and automatically updates the tradie's calendar.
+This flow demonstrates the full multimodal journey from a voice call → SMS photo request → vision analysis → automated pricing → tradie approval → customer confirmation.
 
 ---
 
-## API Endpoints
+## Tech Stack
 
-### Authentication
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/auth/login` | Email/password login → JWT token |
-| `POST` | `/auth/signup` | Create new user account |
-| `GET` | `/auth/me` | Get current user profile |
-| `POST` | `/auth/logout` | Blacklist current token |
-| `POST` | `/auth/forgot-password` | Send password reset email |
-| `POST` | `/auth/reset-password` | Reset password with token |
-| `GET` | `/auth/google` | Initiate Google OAuth |
-| `GET` | `/auth/google/callback` | Google OAuth callback |
-
-### Admin
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/admin/profiles` | List all customer profiles |
-| `GET` | `/api/admin/stats` | Dashboard metrics (customers, leads, booking rate) |
-| `POST` | `/api/admin/onboard` | Create customer + business profile |
-| `PATCH` | `/api/admin/profiles/{id}` | Update profile + inbound config |
-
-### Leads
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/leads` | List leads (filtered by user) |
-| `POST` | `/api/leads` | Create lead with AI enrichment |
-| `GET` | `/api/leads/{id}` | Get lead details |
-| `PATCH` | `/api/leads/{id}` | Update lead status/details |
-| `WS` | `/ws/leads` | Realtime lead updates |
-
-### Voice & Monitoring
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/voice/status` | Deepgram, ElevenLabs, Twilio, WebSocket status |
-| `GET` | `/health` | API health check |
-| `GET` | `/docs` | Swagger UI (auto-generated) |
+| Layer | Technologies |
+|-------|-------------|
+| **Frontend** | Next.js 16 (App Router, Turbopack), React 19, MUI 7 |
+| **Backend** | FastAPI, SQLAlchemy 2.0, aiosqlite, Pydantic v2, WebSockets |
+| **AI / Voice** | LiveKit Agents 1.4, OpenRouter (Claude/GPT), Deepgram Nova-2 (STT), ElevenLabs (TTS) |
+| **Integrations** | Google Vision, Google Maps Distance Matrix, SerpAPI (live parts pricing), Twilio (telephony + SMS) |
+| **Auth** | JWT (HS256), bcrypt, Google OAuth 2.0 |
+| **Database** | SQLite (aiosqlite) |
+| **Infra** | pnpm workspaces, NX monorepo |
 
 ---
 
-## Quick Start
+## Voice Architecture
+
+The platform uses a **dual-worker** architecture for voice AI, powered by [LiveKit Agents](https://docs.livekit.io/agents/):
+
+| Worker | File | Role | Dispatch Filter |
+|--------|------|------|-----------------|
+| **Tradie Worker** | `tradie_worker.py` | Copilot — jobs, SMS, SDUI | `identity.startsWith("user-")` |
+| **Customer Worker** | `customer_worker.py` | Receptionist — lead intake, area check | All other participants |
+
+### Voice Features
+
+- **VoiceFab** — Microphone button in Orbit connects to the Tradie Worker for hands-free assistant interaction. Includes retry-on-failure, multi-state labels (Connecting/Listening/Speaking), and live transcript display.
+- **Inbound Calls** — Customer calls are handled by the Customer Worker as a virtual receptionist (Twilio → LiveKit).
+- **SDUI** — The assistant can push UI components to the dashboard in real-time (e.g. "Show me jobs for tomorrow").
+- **Smart Actions** — Tools for SMS notifications ("I'm running 15 mins late"), outbound calls, and lead logging.
+- **Live Call Status** — Real-time "Active Call" banner on the dashboard via WebSocket events.
+
+### Twilio Configuration (Optional)
+
+To enable inbound phone calls, expose your local server via `ngrok` and configure Twilio:
+
+1.  **Start ngrok**:
+    ```bash
+    ngrok http 8000
+    ```
+2.  **Copy the Forwarding URL** (e.g., `https://1234-abcd.ngrok-free.app`).
+3.  **Configure Twilio**:
+    - Go to [Twilio Console > Phone Numbers](https://console.twilio.com/).
+    - Select your tracking number.
+    - Under **Voice & Fax**, set the **"A Call Comes In"** Webhook to:
+      `YOUR_NGROK_URL/api/voice/incoming`
+    - Ensure the method is `POST`.
+4.  **Save** and call the number to test.
+
+---
+
+## Product Roles
+
+### 🪐 Sophiie Orbit (The Operation)
+Mobile-first workspace for **Trade Professionals** to manage daily operations.
+- **Enquiry Management**: Real-time leads with inline location, distance, and estimate data. Snackbar feedback on call actions.
+- **Hands-free AI**: Voice Assistant (VoiceFab) with retry-on-failure, multi-state labels, and live transcripts.
+- **Quote Approvals**: Review and dispatch AI-generated quotes via push-banner modal.
+- **Smart States**: Empty-state illustrations, relative timestamps, and live connection indicators (Live/Offline chip in app bar).
+- **Appointment Tracking**: Today's schedule with status-coded cards, connection badge, and friendly empty-day messaging.
+
+> [!TIP]
+> **Mobile Utility**: A native mobile app experience is critical for tradies, allowing them to manage their workspace, receive real-time lead alerts, and use the voice assistant while on the job or between sites.
+
+### 🌌 Sophiie Space (The Command Center)
+Internal control plane for **Platform Administrators**.
+- **Dashboard Overview**: Stat cards with colored icons, live agent stage chip (pulse animation), and AI pipeline status.
+- **User Onboarding**: Configure tradie business profiles, rates, and service areas.
+- **Customer Management**: Searchable customer table with service-type chips, status badges, and empty-state guidance.
+- **Voice Orchestration**: Map Twilio numbers to specific AI personas with validated inbound setup.
+- **System Monitoring**: Status-dot indicators (green/red) for Deepgram, ElevenLabs, Twilio. Voice event timeline feed. Token testing tools.
+
+---
+
+## How to Run
 
 ### Prerequisites
 
@@ -141,7 +224,7 @@ pnpm worker:customer
 
 | URL | Service |
 |-----|---------|
-| [http://localhost:3000](http://localhost:3000) | **Sophiie Orbit** — Customer/Tradie Portal |
+| [http://localhost:3000](http://localhost:3000) | **Sophiie Orbit** — Tradie Portal |
 | [http://localhost:3001](http://localhost:3001) | **Sophiie Space** — Admin Console |
 | [http://localhost:8000/docs](http://localhost:8000/docs) | **API Documentation** (Swagger UI) |
 | [http://localhost:8000/health](http://localhost:8000/health) | **Health Check** |
@@ -167,7 +250,6 @@ The bootstrap super-admin is created automatically at API startup.
 |-------|-------|
 | **Email** | `superadmin@sophiie.ai` |
 | **Password** | `d3m0-p@s5` |
-| **Login alias** | `demo-SA` |
 
 Override via environment variables:
 
@@ -209,77 +291,48 @@ NEXT_PUBLIC_WS_URL=ws://localhost:8000
 
 ---
 
-## Tech Stack
+## API Endpoints
 
-| Layer | Technologies |
-|-------|-------------|
-| **Frontend** | Next.js 16 (App Router, Turbopack), React 19, MUI 7, Tailwind CSS |
-| **Backend** | FastAPI, SQLAlchemy 2.0, aiosqlite, Pydantic v2, WebSockets |
-| **AI / Voice** | LiveKit Agents 1.4, LangChain, OpenRouter, Deepgram Nova-2, ElevenLabs |
-| **Auth** | JWT (HS256), bcrypt, Google OAuth 2.0 |
-| **Database** | SQLite |
-| **Infra** | pnpm workspaces, NX, Docker Compose (local DB/Redis) |
+### Authentication
 
----
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/auth/login` | Email/password login → JWT token |
+| `POST` | `/auth/signup` | Create new user account |
+| `GET` | `/auth/me` | Get current user profile |
+| `POST` | `/auth/logout` | Blacklist current token |
+| `POST` | `/auth/forgot-password` | Send password reset email |
+| `POST` | `/auth/reset-password` | Reset password with token |
+| `GET` | `/auth/google` | Initiate Google OAuth |
+| `GET` | `/auth/google/callback` | Google OAuth callback |
 
-## Voice Architecture
+### Admin
 
-The platform uses a **dual-worker** architecture for voice AI, powered by [LiveKit Agents](https://docs.livekit.io/agents/):
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/admin/profiles` | List all customer profiles |
+| `GET` | `/api/admin/stats` | Dashboard metrics (customers, leads, booking rate) |
+| `POST` | `/api/admin/onboard` | Create customer + business profile |
+| `PATCH` | `/api/admin/profiles/{id}` | Update profile + inbound config |
 
-| Worker | File | Role | Dispatch Filter |
-|--------|------|------|------------------|
-| **Tradie Worker** | `tradie_worker.py` | Assistant — jobs, SMS, SDUI | `identity.startsWith("user-")` |
-| **Customer Worker** | `customer_worker.py` | Receptionist — lead intake, area check | All other participants |
+### Leads
 
-### Voice Features
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/leads` | List leads (filtered by user) |
+| `POST` | `/api/leads` | Create lead with AI enrichment |
+| `GET` | `/api/leads/{id}` | Get lead details |
+| `PATCH` | `/api/leads/{id}` | Update lead status/details |
+| `WS` | `/ws/leads` | Realtime lead updates |
 
-- **VoiceFab** — Microphone button in Orbit connects to the Tradie Worker for hands-free assistant interaction.
-- **Inbound Calls** — Customer calls are handled by the Customer Worker as a virtual receptionist (Twilio → LiveKit).
-- **SDUI** — The assistant can push UI components to the dashboard in real-time (e.g. "Show me jobs for tomorrow").
-- **Smart Actions** — Tools for SMS notifications ("I'm running 15 mins late"), outbound calls, and lead logging.
-- **Live Call Status** — Real-time "Active Call" banner on the dashboard via WebSocket events.
+### Voice & Monitoring
 
-### Twilio Configuration (Optional)
-
-To enable inbound phone calls, you must expose your local server to the internet using `ngrok` and configure your Twilio Phone Number:
-
-1.  **Start ngrok**:
-    ```bash
-    ngrok http 8000
-    ```
-2.  **Copy the Forwarding URL** (e.g., `https://1234-abcd.ngrok-free.app`).
-3.  **Configure Twilio**:
-    - Go to [Twilio Console > Phone Numbers](https://console.twilio.com/).
-    - Select your tracking number (e.g., `+91...`).
-    - Under **Voice & Fax**, set the **"A Call Comes In"** Webhook to:
-      `YOUR_NGROK_URL/api/voice/incoming`
-    - Ensure the method is `POST`.
-4.  **Save** and call the number to test.
-
----
-
-## Product Roles
-
-### 🪐 Sophiie Orbit (The Operation)
-Mobile-first workspace for **Trade Professionals** to manage daily operations.
-- **Enquiry Management**: Real-time leads with inline location, distance, and estimate data. Snackbar feedback on call actions.
-- **Hands-free AI**: Voice Assistant (VoiceFab) with retry-on-failure, multi-state labels (Connecting/Listening/Speaking), and live transcripts.
-- **Quote Approvals**: Review and dispatch AI-generated quotes via push-banner modal.
-- **Smart States**: Empty-state illustrations, relative timestamps, and live connection indicators (Live/Offline chip in app bar).
-- **Appointment Tracking**: Today’s schedule with status-coded cards, connection badge, and friendly empty-day messaging.
-
-> [!TIP]
-> **Mobile Utility**: A native mobile app experience is critical for tradies, allowing them to manage their workspace, receive real-time lead alerts, and use the voice assistant while on the job or between sites.
-
-### 🌌 Sophiie Space (The Command Center)
-Internal control plane for **Platform Administrators**.
-- **Dashboard Overview**: Stat cards with colored icons, live agent stage chip (pulse animation), and AI pipeline status.
-- **User Onboarding**: Configure tradie business profiles, rates, and service areas.
-- **Customer Management**: Searchable customer table with service-type chips, status badges, and empty-state guidance.
-- **Voice Orchestration**: Map Twilio numbers to specific AI personas with validated inbound setup (helper text, Snackbar feedback).
-- **System Monitoring**: Status-dot indicators (green/red) for Deepgram, ElevenLabs, Twilio. Voice event timeline feed. Token testing tools.
-
-- **Customer Surface** — Customer-facing interactions via SMS, voice calls, and photo upload links triggered from the Orbit workflow.
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/voice/token` | Generate LiveKit room token |
+| `GET` | `/api/voice/status` | Deepgram, ElevenLabs, Twilio, WebSocket status |
+| `GET` | `/health` | API health check |
+| `GET` | `/docs` | Swagger UI (auto-generated) |
 
 ---
 

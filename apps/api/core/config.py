@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     # OpenRouter LLM
     openrouter_api_key: str = ""
     openrouter_model: str = "anthropic/claude-sonnet-4"
+    openrouter_vision_model: str = "openai/gpt-4o-mini"
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
 
     # Redis (optional -- gracefully degrades if unavailable)

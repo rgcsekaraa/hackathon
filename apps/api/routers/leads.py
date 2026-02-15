@@ -150,7 +150,16 @@ async def upload_photo(
         raise HTTPException(status_code=404, detail="Lead not found")
 
     image_bytes = await file.read()
-    patches = await process_photo(db, lead, image_bytes=image_bytes)
+    try:
+        patches = await process_photo(db, lead, image_bytes=image_bytes)
+    except Exception as exc:
+        logger.error("Lead photo analysis failed for %s: %s", lead_id, exc, exc_info=True)
+        await lead_manager.broadcast_lead_update({
+            "id": lead.id,
+            "status": "analysis_failed",
+            "error": str(exc),
+        })
+        raise HTTPException(status_code=503, detail=f"Photo analysis failed: {exc}")
     await db.commit()
 
     # Broadcast photo analysis → trigger quote recalculation on mobile
