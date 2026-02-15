@@ -7,7 +7,7 @@ Falls back to logging when no credentials are configured.
 
 from __future__ import annotations
 import logging
-from core.config import settings
+from core.config import settings as app_settings
 
 logger = logging.getLogger(__name__)
 
@@ -18,22 +18,22 @@ async def send_sms(to: str, body: str) -> dict:
 
     Returns {"status": "sent", "to": to} on success, or mock response if no credentials.
     """
-    if not settings.twilio_account_sid or not settings.twilio_auth_token:
+    if not app_settings.twilio_account_sid or not app_settings.twilio_auth_token:
         logger.info("[MOCK SMS] To: %s | Body: %s", to, body[:100])
         return {"status": "mock_sent", "to": to, "body": body}
 
     try:
         import httpx
 
-        auth = (settings.twilio_account_sid, settings.twilio_auth_token)
-        url = f"https://api.twilio.com/2010-04-01/Accounts/{settings.twilio_account_sid}/Messages.json"
+        auth = (app_settings.twilio_account_sid, app_settings.twilio_auth_token)
+        url = f"https://api.twilio.com/2010-04-01/Accounts/{app_settings.twilio_account_sid}/Messages.json"
 
         async with httpx.AsyncClient() as client:
             resp = await client.post(
                 url,
                 auth=auth,
                 data={
-                    "From": settings.twilio_phone_number,
+                    "From": app_settings.twilio_phone_number,
                     "To": to,
                     "Body": body,
                 },
@@ -50,12 +50,13 @@ async def send_sms(to: str, body: str) -> dict:
         return {"status": "error", "to": to, "error": str(e)}
 
 
-def build_photo_upload_url(lead_id: str, base_url: str = "http://localhost:3000") -> str:
+def build_photo_upload_url(lead_id: str, base_url: str | None = None) -> str:
     """Build the URL for the customer photo upload page."""
-    return f"{base_url}/customer/upload/{lead_id}"
+    url = base_url or app_settings.frontend_url
+    return f"{url}/customer/upload/{lead_id}"
 
 
-async def send_photo_upload_link(to: str, lead_id: str, base_url: str = "http://localhost:3000") -> dict:
+async def send_photo_upload_link(to: str, lead_id: str, base_url: str | None = None) -> dict:
     """Send an SMS with a link to upload photos."""
     upload_url = build_photo_upload_url(lead_id, base_url)
     body = (

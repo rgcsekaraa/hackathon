@@ -75,8 +75,6 @@ async def google_callback(request: Request, db: AsyncSession = Depends(get_db)):
     # Generate our JWT
     token = create_access_token(data={"sub": user.id})
     
-    # In a typical browser flow, we might redirect to frontend with token in URL 
-    # or set a secure cookie. For simplicity with our existing AuthContext, 
-    # we'll redirect back to a callback page on the frontend.
-    frontend_url = "http://localhost:3000/auth/callback"
-    return RedirectResponse(f"{frontend_url}?token={token}")
+    # Redirect back to frontend callback page with the token
+    callback_url = f"{settings.frontend_url}/auth/callback"
+    return RedirectResponse(f"{callback_url}?token={token}")

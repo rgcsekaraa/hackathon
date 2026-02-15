@@ -26,7 +26,7 @@ from services.voice.deepgram_live import DeepgramLiveClient
 from services.voice.tts_stream import stream_tts_to_mulaw
 from services.ai.langchain_agent import classify_lead, ClassifiedLead, _fallback_classify
 from services.realtime.connection_manager import lead_manager
-from services.tradie_context import get_tradie_context_for_ai
+from services.profile_context import get_profile_context_for_ai as get_tradie_context_for_ai
 
 logger = logging.getLogger(__name__)
 
@@ -189,7 +189,7 @@ async def handle_media_stream(
                 # Send greeting (AI speaks first)
                 if not session.greeting_sent:
                     business_name = session.tradie_ctx.get(
-                        "business_name", "Gold Coast Plumbing"
+                        "business_name", settings.default_business_name
                     )
                     greeting = (
                         f"G'day! Thanks for calling {business_name}. "

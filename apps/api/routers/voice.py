@@ -22,7 +22,7 @@ from services.voice.deepgram_stt import transcribe_audio, transcribe_url
 from services.voice.elevenlabs_tts import generate_speech, list_voices
 from services.ai.langchain_agent import classify_lead, ClassifiedLead
 from services.realtime.connection_manager import lead_manager
-from services.tradie_context import load_tradie_context, get_tradie_context_for_ai
+from services.profile_context import load_profile_context, get_profile_context_for_ai
 from db.session import get_db_context
 from core.deps import get_current_user
 from models.user import User
@@ -97,7 +97,7 @@ async def _send_photo_sms(phone: str, lead_id: str) -> dict:
     """Send SMS with photo upload link. Never raises — logs and returns status."""
     try:
         from services.integrations.sms import send_sms
-        upload_url = f"http://localhost:3000/customer?lead={lead_id}"
+        upload_url = f"{settings.frontend_url}/customer?lead={lead_id}"
         body = (
             f"Thanks for calling! Upload photos of the issue here "
             f"for a more accurate quote: {upload_url}"
@@ -173,7 +173,7 @@ async def media_stream_endpoint(websocket: WebSocket):
     tradie_ctx = {}
     try:
         async with get_db_context() as db:
-            tradie_ctx = await load_tradie_context(db) or {}
+            tradie_ctx = await load_profile_context(db) or {}
     except Exception as exc:
         logger.warning("Failed to load tradie context for media stream: %s", exc)
 
@@ -261,16 +261,32 @@ async def voice_webhook(request: Request):
     lead_id = f"lead-{call_sid[:8]}"
 
     # Pre-load tradie context for this call (from Redis cache or DB)
+    # For multi-user: match the called Twilio number to the right tradie profile
     tradie_ctx = {}
     tradie_ctx_text = ""
     try:
         async with get_db_context() as db:
-            tradie_ctx = await load_tradie_context(db)
-            tradie_ctx_text = get_tradie_context_for_ai(tradie_ctx)
+            # Route to correct tradie based on the "To" phone number
+            from sqlalchemy import select as sa_select
+            from models.lead import UserProfile as UP
+            called_number = form.get("To", "")
+            profile_id = None
+            if called_number:
+                result = await db.execute(
+                    sa_select(UP.id).where(
+                        UP.inbound_config["identifier"].as_string() == called_number
+                    ).limit(1)
+                )
+                row = result.scalar_one_or_none()
+                if row:
+                    profile_id = row
+
+            tradie_ctx = await load_profile_context(db, user_profile_id=profile_id)
+            tradie_ctx_text = get_profile_context_for_ai(tradie_ctx)
     except Exception as exc:
         logger.warning("Failed to load tradie context: %s — using defaults", exc)
 
-    business_name = tradie_ctx.get("business_name", "Gold Coast Plumbing")
+    business_name = tradie_ctx.get("business_name", settings.default_business_name)
 
     # -----------------------------------------------------------------------
     # Case 1: No recording yet — first hit, prompt customer to record
@@ -542,7 +558,8 @@ async def voice_pipeline_status():
 # TwiML Response Builders (all edge cases covered)
 # ---------------------------------------------------------------------------
 
-def _twiml_greeting(business_name: str = "Gold Coast Plumbing") -> Response:
+def _twiml_greeting(business_name: str = "") -> Response:
+    business_name = business_name or settings.default_business_name
     """Initial call greeting — uses the tradie's business name."""
     xml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>

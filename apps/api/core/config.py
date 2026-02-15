@@ -15,12 +15,15 @@ class Settings(BaseSettings):
     app_name: str = "Sophiie Orbit"
     debug: bool = False
 
-    # CORS -- comma-separated origins
+    # CORS -- comma-separated origins (set CORS_ORIGINS env var for production)
     cors_origins: list[str] = [
         "http://localhost:3000",
         "http://localhost:3001",
         "http://localhost:3002",
     ]
+
+    # Frontend URL (used for OAuth callbacks and SMS links)
+    frontend_url: str = "http://localhost:3000"
 
     # OpenRouter LLM
     openrouter_api_key: str = ""
@@ -72,6 +75,10 @@ class Settings(BaseSettings):
     default_callout_fee: float = 80.0
     default_hourly_rate: float = 95.0
     default_markup_pct: float = 15.0
+
+    # Default business info (fallback for voice pipeline when no profile exists)
+    default_business_name: str = "Gold Coast Plumbing"
+    default_base_address: str = "Burleigh Heads, QLD"
 
     model_config = {
         "env_file": ".env",

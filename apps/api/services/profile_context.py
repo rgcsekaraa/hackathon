@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.lead import UserProfile, LeadSession
 from services.lead_cache import cache_tradie, get_cached_tradie
+from core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +67,7 @@ async def load_profile_context(
         profile = result.scalar_one_or_none()
 
         if not profile:
-            logger.warning("No tradie profile found (id=%s)", tradie_id)
+            logger.warning("No tradie profile found (id=%s)", user_profile_id)
             return _default_context()
 
         # Get next available slots
@@ -236,8 +237,8 @@ def _default_context() -> dict:
     """Fallback context when no profile exists."""
     return {
         "user_profile_id": None,
-        "business_name": "Gold Coast Plumbing",
-        "base_address": "Burleigh Heads, QLD",
+        "business_name": settings.default_business_name,
+        "base_address": settings.default_base_address,
         "service_radius_km": 30,
         "hourly_rate": 120.0,
         "base_callout_fee": 80.0,
@@ -255,5 +256,5 @@ def _default_context() -> dict:
         ],
         "next_available_date": "today",
         "next_available_time": "13:00-17:00",
-        "greeting_name": "Gold Coast Plumbing",
+        "greeting_name": settings.default_business_name,
     }

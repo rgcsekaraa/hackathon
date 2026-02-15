@@ -32,7 +32,7 @@ from livekit.plugins import deepgram, elevenlabs, openai, silero
 
 from core.config import settings
 from db.session import get_db_context
-from services.tradie_context import load_tradie_context, get_tradie_context_for_ai
+from services.profile_context import load_profile_context as load_tradie_context, get_profile_context_for_ai as get_tradie_context_for_ai
 from services.integrations.distance import calculate_distance
 from services.realtime.connection_manager import lead_manager
 
@@ -186,8 +186,8 @@ async def entrypoint(ctx: JobContext):
     # LLM: OpenRouter (Llama 3.1 70B)
     # Allows for fast, high-quality reasoning with tool calling
     llm_plugin = openai.LLM(
-        model="meta-llama/llama-3.1-70b-instruct",
-        base_url="https://openrouter.ai/api/v1",
+        model=settings.openrouter_model,
+        base_url=settings.openrouter_base_url,
         api_key=settings.openrouter_api_key,
     )
 
@@ -225,7 +225,7 @@ async def entrypoint(ctx: JobContext):
     # The session is managed by the worker context.
 
     # Send initial greeting
-    greeting = f"G'day! Thanks for calling {tradie_ctx.get('business_name', 'Gold Coast Plumbing')}. How can I help you today?"
+    greeting = f"G'day! Thanks for calling {tradie_ctx.get('business_name', settings.default_business_name)}. How can I help you today?"
     await agent.say(greeting, allow_interruptions=True)
 
 
