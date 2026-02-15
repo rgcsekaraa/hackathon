@@ -1,206 +1,157 @@
 "use client";
 
-import { createTheme, type ThemeOptions } from "@mui/material/styles";
+import { createTheme, type PaletteMode } from "@mui/material/styles";
 
-/**
- * Production-grade theme tokens inspired by Sophiie.ai
- * "Premium Enterprise" aesthetic -- deep navy, clean slate, sharp typography.
- */
-const M3_TOKENS = {
-  borderRadius: {
-    xs: 6,
-    s: 10,
-    m: 16, // Smoother M3 Card radius
-    l: 24,
-    xl: 32, // Pill shapes
-  },
-};
+export function buildTheme(mode: PaletteMode) {
+  const isDark = mode === "dark";
 
-const sharedOptions: ThemeOptions = {
-  typography: {
-    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-    h1: { fontWeight: 800, letterSpacing: "-0.04em", fontSize: "2.75rem" },
-    h2: { fontWeight: 800, letterSpacing: "-0.03em", fontSize: "2.25rem" },
-    h3: { fontWeight: 700, letterSpacing: "-0.02em", fontSize: "1.75rem" },
-    h4: { fontWeight: 700, letterSpacing: "-0.02em", fontSize: "1.5rem" },
-    h5: { fontWeight: 700, letterSpacing: "-0.02em", fontSize: "1.25rem" },
-    h6: { fontWeight: 700, letterSpacing: "-0.01em", fontSize: "1.1rem" },
-    subtitle1: { fontWeight: 600, letterSpacing: "0.01em", fontSize: "0.95rem" },
-    subtitle2: { fontWeight: 600, letterSpacing: "0.01em", fontSize: "0.875rem" },
-    body1: { fontSize: "1rem", lineHeight: 1.6, letterSpacing: "0.01em" },
-    body2: { fontSize: "0.875rem", lineHeight: 1.6, letterSpacing: "0.01em" },
-    button: { fontWeight: 700, textTransform: "none", fontSize: "0.875rem", letterSpacing: "0.03em" },
-    caption: { fontSize: "0.75rem", fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase" },
-  },
-  shape: {
-    borderRadius: M3_TOKENS.borderRadius.m,
-  },
-  components: {
-    MuiCssBaseline: {
-      styleOverrides: {
-        body: {
-          WebkitFontSmoothing: "antialiased",
-          MozOsxFontSmoothing: "grayscale",
-          textRendering: "optimizeLegibility",
-          backgroundColor: "#020617",
-        },
+  return createTheme({
+    palette: {
+      mode,
+      primary: {
+        main: isDark ? "#8AB4F8" : "#1A73E8",
+        light: isDark ? "#AECBFA" : "#4285F4",
+        dark: isDark ? "#669DF6" : "#1557B0",
+      },
+      secondary: {
+        main: isDark ? "#669DF6" : "#1557B0",
+      },
+      background: {
+        default: isDark ? "#0E0E0E" : "#F8F9FA",
+        paper: isDark ? "#1A1A1A" : "#FFFFFF",
+      },
+      text: {
+        primary: isDark ? "#E8EAED" : "#202124",
+        secondary: isDark ? "#9AA0A6" : "#5F6368",
+      },
+      divider: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)",
+      error: {
+        main: isDark ? "#F28B82" : "#D93025",
+      },
+      warning: {
+        main: isDark ? "#FDD663" : "#E37400",
+      },
+      success: {
+        main: isDark ? "#81C995" : "#1E8E3E",
+      },
+      info: {
+        main: isDark ? "#8AB4F8" : "#1A73E8",
       },
     },
-    MuiButton: {
-      styleOverrides: {
-        root: {
-          borderRadius: 100, // M3 Full-pill buttons
-          padding: "8px 24px",
-          transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-          boxShadow: "none",
-          fontWeight: 600,
-          "&:hover": {
-            boxShadow: "none",
-            backgroundColor: "rgba(0,0,0,0.04)",
-          },
-        },
-        contained: {
-          boxShadow: "none",
-          "&:hover": { boxShadow: "0 1px 3px rgba(0,0,0,0.12)" },
-        },
-        outlined: {
-          border: "1px solid",
-          borderColor: "divider",
-          "&:hover": {
-            border: "1px solid",
-            backgroundColor: "rgba(0,0,0,0.02)",
-          },
-        },
+    typography: {
+      fontFamily: '"Google Sans", "Roboto", "Arial", sans-serif',
+      h5: {
+        fontWeight: 500,
+        letterSpacing: 0,
       },
-      defaultProps: {
-        disableElevation: true,
+      h6: {
+        fontWeight: 500,
+        fontSize: "1.1rem",
+        letterSpacing: 0,
       },
-    },
-    MuiCard: {
-      styleOverrides: {
-        root: {
-          borderRadius: M3_TOKENS.borderRadius.m,
-          boxShadow: "none",
-          border: "1px solid",
-          borderColor: "divider",
-          backgroundImage: "none",
-          transition: "transform 0.2s ease, border-color 0.2s ease",
-        },
+      subtitle1: {
+        fontWeight: 500,
+        fontSize: "0.95rem",
+      },
+      subtitle2: {
+        fontWeight: 400,
+      },
+      body1: {
+        fontSize: "0.875rem",
+        lineHeight: 1.5,
+      },
+      body2: {
+        fontSize: "0.8125rem",
+      },
+      button: {
+        textTransform: "none",
+        fontWeight: 500,
       },
     },
-    MuiPaper: {
-      styleOverrides: {
-        root: {
-          backgroundImage: "none",
-        },
-        rounded: {
-          borderRadius: M3_TOKENS.borderRadius.m,
-        },
-      },
+    shape: {
+      borderRadius: 12,
     },
-    MuiAppBar: {
-      styleOverrides: {
-        root: {
-          backgroundColor: "transparent",
-          color: "inherit",
-          boxShadow: "none",
-          borderBottom: "1px solid",
-        },
-      },
-    },
-    MuiTextField: {
-      defaultProps: {
-        variant: "outlined",
-        size: "small",
-      },
-      styleOverrides: {
-        root: {
-          "& .MuiOutlinedInput-root": {
-            borderRadius: M3_TOKENS.borderRadius.s,
+    components: {
+      MuiButton: {
+        styleOverrides: {
+          root: {
+            borderRadius: 20,
+            padding: "8px 24px",
           },
         },
       },
+      MuiCard: {
+        styleOverrides: {
+          root: {
+            backgroundImage: "none",
+            borderRadius: 12,
+          },
+        },
+      },
+      MuiListItemButton: {
+        styleOverrides: {
+          root: {
+            borderRadius: 8,
+            "&.Mui-selected": {
+              backgroundColor: isDark
+                ? "rgba(138, 180, 248, 0.08)"
+                : "rgba(26, 115, 232, 0.08)",
+            },
+          },
+        },
+      },
+      MuiBottomNavigation: {
+        styleOverrides: {
+          root: {
+            backgroundColor: isDark ? "#1A1A1A" : "#FFFFFF",
+            borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`,
+          },
+        },
+      },
+      MuiBottomNavigationAction: {
+        styleOverrides: {
+          root: {
+            color: isDark ? "#9AA0A6" : "#5F6368",
+            "&.Mui-selected": {
+              color: isDark ? "#8AB4F8" : "#1A73E8",
+            },
+            minWidth: 0,
+          },
+        },
+      },
+      MuiChip: {
+        styleOverrides: {
+          root: {
+            borderRadius: 8,
+            fontWeight: 500,
+            fontSize: "0.75rem",
+          },
+        },
+      },
+      MuiAppBar: {
+        styleOverrides: {
+          root: {
+            backgroundImage: "none",
+            backgroundColor: isDark ? "#0E0E0E" : "#FFFFFF",
+          },
+        },
+      },
+      MuiFab: {
+        styleOverrides: {
+          root: {
+            boxShadow: isDark
+              ? "0 4px 16px rgba(0,0,0,0.6)"
+              : "0 4px 16px rgba(0,0,0,0.15)",
+          },
+        },
+      },
+      MuiDrawer: {
+        styleOverrides: {
+          paper: {
+            backgroundImage: "none",
+          },
+        },
+      },
     },
-  },
-};
-
-/**
- * Sophiie Light Theme -- M3 Inspired Light Palette
- */
-export const lightTheme = createTheme({
-  ...sharedOptions,
-  palette: {
-    mode: "light",
-    primary: {
-      main: "#1d4ed8",
-      light: "#3b82f6",
-      dark: "#1e40af",
-      contrastText: "#ffffff",
-    },
-    secondary: {
-      main: "#64748b",
-      light: "#94a3b8",
-      dark: "#475569",
-    },
-    background: {
-      default: "#f8fafc",
-      paper: "#ffffff",
-    },
-    surfaceVariant: {
-      main: "#e2e8f0",
-      contrastText: "#475569",
-    },
-    text: {
-      primary: "#0f172a",
-      secondary: "#64748b",
-      disabled: "#94a3b8",
-    },
-    divider: "rgba(0, 0, 0, 0.08)",
-  },
-});
-
-/**
- * Sophiie Dark Theme -- M3 Inspired Dark Palette
- */
-export const darkTheme = createTheme({
-  ...sharedOptions,
-  palette: {
-    mode: "dark",
-    primary: {
-      main: "#6366f1", // Indigo
-      light: "#818cf8",
-      dark: "#4f46e5",
-      contrastText: "#ffffff",
-    },
-    secondary: {
-      main: "#fbbf24", // Amber/Gold accents for premium feel
-      light: "#fcd34d",
-      dark: "#d97706",
-    },
-    background: {
-      default: "#020617", // Deep Navy/Slate
-      paper: "#0f172a",
-    },
-    surfaceVariant: {
-      main: "#1e293b",
-      contrastText: "#cbd5e1",
-    },
-    text: {
-      primary: "#f8fafc",
-      secondary: "#94a3b8",
-      disabled: "#475569",
-    },
-    divider: "rgba(255, 255, 255, 0.06)",
-  },
-});
-
-// Custom palette extensions
-declare module "@mui/material/styles" {
-  interface Palette {
-    surfaceVariant: Palette["primary"];
-  }
-  interface PaletteOptions {
-    surfaceVariant?: PaletteOptions["primary"];
-  }
+  });
 }
-

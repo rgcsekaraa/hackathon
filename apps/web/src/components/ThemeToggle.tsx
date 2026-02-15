@@ -5,19 +5,19 @@ import Tooltip from "@mui/material/Tooltip";
 import LightModeIcon from "@mui/icons-material/LightMode";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
 
-import { useThemeMode } from "@/components/providers/ThemeProvider";
+import { useThemeMode } from "@/lib/theme-context";
 
 /**
  * Toggle button for switching between dark and light themes.
  * Shows the opposite mode icon as a hint of what clicking does.
  */
 export function ThemeToggle() {
-  const { mode, toggleTheme } = useThemeMode();
+  const { mode, toggleMode } = useThemeMode();
 
   return (
     <Tooltip title={mode === "dark" ? "Switch to light mode" : "Switch to dark mode"}>
       <IconButton
-        onClick={toggleTheme}
+        onClick={toggleMode}
         size="small"
         sx={{
           color: "text.secondary",
