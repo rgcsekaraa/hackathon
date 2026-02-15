@@ -6,14 +6,18 @@ from sqlalchemy import select
 from db.session import get_db
 from models.user import User
 from core.auth import get_password_hash, verify_password, create_access_token
+from core.config import settings
 from core.deps import get_current_user, oauth2_scheme
 from models.token import TokenBlacklist
 from schemas.auth import (
     Token, UserCreate, UserLogin, UserOut, 
-    ForgotPasswordRequest, ResetPasswordRequest
+    ForgotPasswordRequest, ResetPasswordRequest,
+    GoogleLogin
 )
 from datetime import datetime, timedelta, timezone
 import logging
+from google.oauth2 import id_token
+from google.auth.transport import requests
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +70,12 @@ async def login(credentials: UserLogin, db: AsyncSession = Depends(get_db)):
             headers={"WWW-Authenticate": "Bearer"},
         )
     
+    if not user.is_verified:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Email not verified. Please check your inbox.",
+        )
+    
     # Generate token
     token = create_access_token(data={"sub": user.id})
     return {
@@ -73,7 +83,70 @@ async def login(credentials: UserLogin, db: AsyncSession = Depends(get_db)):
         "token_type": "bearer",
         "user": user
     }
-from core.deps import get_current_user
+
+@router.post("/google", response_model=Token)
+async def google_login(login_data: GoogleLogin, db: AsyncSession = Depends(get_db)):
+    """Authenticate via Google ID Token."""
+    try:
+        if not settings.google_client_id:
+            raise HTTPException(status_code=503, detail="Google login not configured")
+
+        # Verify Google Token
+        id_info = id_token.verify_oauth2_token(
+            login_data.id_token, 
+            requests.Request(), 
+            audience=settings.google_client_id,
+        )
+        
+        email = id_info.get("email")
+        if not email:
+            raise HTTPException(status_code=400, detail="Invalid Google Token: Email missing")
+        
+        google_id = id_info.get("sub")
+        name = id_info.get("name")
+        picture = id_info.get("picture") # Could save profile pic
+        
+        # Check if user exists
+        result = await db.execute(select(User).where(User.email == email))
+        user = result.scalar_one_or_none()
+        
+        if not user:
+            # Create new user (Auto-Verified)
+            user = User(
+                id=str(uuid.uuid4()),
+                email=email,
+                full_name=name,
+                google_id=google_id,
+                is_verified=True, # Trusted provider
+                hashed_password=None # No password for social login
+            )
+            db.add(user)
+            await db.commit()
+            await db.refresh(user)
+        else:
+            # Link Google ID if not present
+            if not user.google_id:
+                user.google_id = google_id
+                # user.is_verified = True # Should we auto-verify existing? Yes, trusted email.
+                if not user.is_verified:
+                     user.is_verified = True
+                await db.commit()
+                await db.refresh(user)
+        
+        # Generate our JWT
+        token = create_access_token(data={"sub": user.id})
+        return {
+            "access_token": token,
+            "token_type": "bearer",
+            "user": user
+        }
+        
+    except ValueError as e:
+        logger.error(f"Google Token Error: {e}")
+        raise HTTPException(status_code=401, detail="Invalid Google Token")
+    except Exception as e:
+        logger.error(f"Google Login Failed: {e}")
+        raise HTTPException(status_code=500, detail="Login failed")
 
 @router.get("/me", response_model=UserOut)
 async def get_me(current_user: User = Depends(get_current_user)):

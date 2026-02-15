@@ -23,6 +23,9 @@ class Token(BaseModel):
     token_type: str
     user: UserOut
 
+class GoogleLogin(BaseModel):
+    id_token: str
+
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr
 

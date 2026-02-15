@@ -98,7 +98,7 @@ async def get_admin_stats(
 @router.patch("/profiles/{profile_id}", response_model=UserProfileResponse)
 async def update_customer_profile(
     profile_id: str,
-    update_data: dict,
+    update_data: UserProfileCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -111,10 +111,17 @@ async def update_customer_profile(
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
 
-    for key, value in update_data.items():
-        if hasattr(profile, key):
+    # Only update allowed fields from the validated schema
+    update_fields = update_data.model_dump(exclude_unset=True)
+    ALLOWED_FIELDS = {
+        "business_name", "service_types", "base_callout_fee", "hourly_rate",
+        "markup_pct", "min_labour_hours", "base_address", "service_radius_km",
+        "travel_rate_per_km", "timezone", "working_hours",
+    }
+    for key, value in update_fields.items():
+        if key in ALLOWED_FIELDS:
             setattr(profile, key, value)
-            
+
     await db.commit()
     await db.refresh(profile)
     return profile
