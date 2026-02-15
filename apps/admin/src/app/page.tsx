@@ -48,6 +48,8 @@ import PersonOutline from "@mui/icons-material/PersonOutline";
 
 import { useAuth } from "@/lib/auth-context";
 import { useThemeMode } from "@/lib/theme-context";
+import NotificationCenter from "@/components/NotificationCenter";
+import UserOnboardingStepper from "@/components/UserOnboardingStepper";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -91,32 +93,12 @@ interface SetupDraft {
   instructions: string;
 }
 
-interface OnboardForm {
-  email: string;
-  full_name: string;
-  password: string;
-  business_name: string;
-  service_types: string;
-  base_address: string;
-  inbound_identifier: string;
-}
-
 const DEFAULT_WORKING_HOURS = {
   monday: ["08:00", "17:00"],
   tuesday: ["08:00", "17:00"],
   wednesday: ["08:00", "17:00"],
   thursday: ["08:00", "17:00"],
   friday: ["08:00", "17:00"],
-};
-
-const INITIAL_ONBOARD_FORM: OnboardForm = {
-  email: "",
-  full_name: "",
-  password: "",
-  business_name: "",
-  service_types: "",
-  base_address: "",
-  inbound_identifier: "",
 };
 
 const TAB_CONFIG: { value: AdminTab; label: string; icon: React.ReactElement }[] = [
@@ -126,12 +108,7 @@ const TAB_CONFIG: { value: AdminTab; label: string; icon: React.ReactElement }[]
   { value: "monitoring", label: "Monitoring", icon: <MonitorHeartOutlined /> },
 ];
 
-function parseServiceTypes(value: string): string[] {
-  return value
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
+
 
 function OrbitLoader({ className }: { className?: string }) {
   return (
@@ -162,8 +139,6 @@ export default function AdminPortalPage() {
   const [stats, setStats] = useState<AdminStats>({ total_customers: 0, total_leads: 0, booking_rate: 0, active_portals: 0 });
   const [voiceStatus, setVoiceStatus] = useState<VoiceStatus | null>(null);
 
-  const [onboardForm, setOnboardForm] = useState<OnboardForm>(INITIAL_ONBOARD_FORM);
-  const [onboardBusy, setOnboardBusy] = useState(false);
   const [setupBusy, setSetupBusy] = useState(false);
   const [monitorBusy, setMonitorBusy] = useState(false);
 
@@ -249,57 +224,9 @@ export default function AdminPortalPage() {
     void fetchVoiceStatus();
   }, [token]);
 
-  const handleOnboard = async () => {
-    if (!token) return;
-    if (!onboardForm.email || !onboardForm.business_name) {
-      setError("Customer email and business name are required.");
-      return;
-    }
-
-    setOnboardBusy(true);
-    setError(null);
-
-    try {
-      const res = await fetch(`${API_URL}/api/admin/onboard`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          user_in: {
-            email: onboardForm.email,
-            full_name: onboardForm.full_name,
-            password: onboardForm.password || "Demo1234!",
-          },
-          profile_in: {
-            business_name: onboardForm.business_name,
-            service_types: parseServiceTypes(onboardForm.service_types),
-            base_address: onboardForm.base_address,
-            base_callout_fee: 80,
-            hourly_rate: 95,
-            service_radius_km: 30,
-            timezone: "Australia/Brisbane",
-            working_hours: DEFAULT_WORKING_HOURS,
-            inbound_config: {
-              provider: "twilio",
-              identifier: onboardForm.inbound_identifier,
-              instructions: "Capture customer details, urgency, and booking preference.",
-            },
-          },
-        }),
-      });
-
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.detail || "Onboarding failed");
-      }
-
-      setOnboardForm(INITIAL_ONBOARD_FORM);
-      await fetchAdminData();
-      setTab("customers");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Onboarding failed");
-    } finally {
-      setOnboardBusy(false);
-    }
+  const handleOnboardSuccess = async () => {
+    await fetchAdminData();
+    setTab("customers");
   };
 
   const openSetup = (profile: Profile) => {
@@ -430,19 +357,8 @@ export default function AdminPortalPage() {
   const renderInbound = () => (
     <Stack spacing={2}>
       <Typography variant="h5" sx={{ fontWeight: 700 }}>Onboard and Inbound Setup</Typography>
-      <Paper variant="outlined" sx={{ p: 2 }}>
-        <Stack spacing={1.25}>
-          <TextField label="Customer Email" size="small" value={onboardForm.email} onChange={(e) => setOnboardForm((p) => ({ ...p, email: e.target.value }))} />
-          <TextField label="Full Name" size="small" value={onboardForm.full_name} onChange={(e) => setOnboardForm((p) => ({ ...p, full_name: e.target.value }))} />
-          <TextField label="Temporary Password" size="small" type="password" value={onboardForm.password} onChange={(e) => setOnboardForm((p) => ({ ...p, password: e.target.value }))} />
-          <TextField label="Business Name" size="small" value={onboardForm.business_name} onChange={(e) => setOnboardForm((p) => ({ ...p, business_name: e.target.value }))} />
-          <TextField label="Service Types (comma separated)" size="small" value={onboardForm.service_types} onChange={(e) => setOnboardForm((p) => ({ ...p, service_types: e.target.value }))} />
-          <TextField label="Base Address" size="small" value={onboardForm.base_address} onChange={(e) => setOnboardForm((p) => ({ ...p, base_address: e.target.value }))} />
-          <TextField label="Inbound Twilio Number" size="small" value={onboardForm.inbound_identifier} onChange={(e) => setOnboardForm((p) => ({ ...p, inbound_identifier: e.target.value }))} />
-          <Button variant="contained" onClick={() => void handleOnboard()} disabled={!token || onboardBusy}>
-            {onboardBusy ? "Creating..." : "Create Customer"}
-          </Button>
-        </Stack>
+      <Paper variant="outlined" sx={{ p: 4 }}>
+        <UserOnboardingStepper onSuccess={handleOnboardSuccess} />
       </Paper>
 
       <Paper variant="outlined" sx={{ p: 2 }}>
@@ -489,14 +405,23 @@ export default function AdminPortalPage() {
       : renderMonitoring();
 
   useEffect(() => {
-    if (!isLoggedIn && !token) {
+    if (!loading && !token) {
       router.replace("/auth/login");
     }
-  }, [isLoggedIn, token, router]);
+  }, [loading, token, router]);
 
-  if (!isLoggedIn && !token) {
-    return null;
+  if (loading) {
+    return (
+      <Box sx={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <CircularProgress />
+      </Box>
+    );
   }
+
+  if (!token) {
+    return null; // Will redirect
+  }
+
   if (user?.role && user.role !== "admin") {
     return (
       <Box sx={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -591,7 +516,9 @@ export default function AdminPortalPage() {
               {isDesktop || isTablet ? TAB_CONFIG.find((t) => t.value === tab)?.label : ""}
             </Typography>
 
-            <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} aria-label="Open user menu" sx={{ p: 0.5 }}>
+            <NotificationCenter />
+            
+            <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} aria-label="Open user menu" sx={{ p: 0.5, ml: 1 }}>
               <Avatar sx={{ width: 32, height: 32, bgcolor: isDark ? "rgba(138,180,248,0.15)" : "rgba(26,115,232,0.1)", color: "primary.main", fontSize: "0.75rem", fontWeight: 600 }}>
                 {initials}
               </Avatar>

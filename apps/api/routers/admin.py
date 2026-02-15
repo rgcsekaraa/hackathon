@@ -96,7 +96,7 @@ async def get_admin_stats(
     return {
         "total_customers": customer_count or 0,
         "total_leads": total_leads or 0,
-        "booking_rate": (booked_leads / total_leads * 100) if total_leads and total_leads > 0 else 0,
+        "booking_rate": round((booked_leads / total_leads * 100), 1) if total_leads > 0 else 0.0,
         "active_portals": customer_count or 0
     }
 

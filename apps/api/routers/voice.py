@@ -523,6 +523,48 @@ async def get_livekit_token(
 
 
 
+
+class VoiceEventRequest(BaseModel):
+    type: str
+    status: str
+    caller: str
+    lead_id: str
+    tradie_id: str | None = None
+
+
+@router.post("/voice/event")
+async def internal_voice_event(req: VoiceEventRequest):
+    """
+    Internal endpoint for Voice Workers to report status changes.
+    Broadcasts events to the frontend via WebSocket.
+    """
+    if req.type == "call_status":
+        await lead_manager.broadcast_call_status(
+            status=req.status,
+            caller=req.caller,
+            lead_id=req.lead_id,
+            tradie_id=req.tradie_id,
+        )
+    return {"status": "ok"}
+
+
+class VoicePatchRequest(BaseModel):
+    tradie_id: str
+    operations: list[dict]
+
+
+@router.post("/voice/patch")
+async def internal_voice_patch(req: VoicePatchRequest):
+    """
+    Internal endpoint for Voice Workers to send UI patches (SDUI).
+    """
+    await lead_manager.broadcast_to_tradie(req.tradie_id, {
+        "type": "patch",
+        "operations": req.operations
+    })
+    return {"status": "ok"}
+
+
 @router.get("/voice/voices")
 async def get_voices():
     """List available ElevenLabs voices."""
