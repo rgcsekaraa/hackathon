@@ -295,9 +295,17 @@ To enable inbound phone calls, you must expose your local server to the internet
 
 ## Product Roles
 
-- **Sophiie Space (Admin)** — Internal control plane for monitoring system health, onboarding customers, configuring inbound call numbers, and viewing aggregate metrics across all customer accounts.
+### 🪐 Sophiie Orbit (The Operation)
+Mobile-first workspace for **Trade Professionals** to manage daily operations.
+- **Enquiry Management**: Real-time leads from voice/text calls.
+- **Hands-free AI**: Voice Assistant (VoiceFab) for scheduling and SMS.
+- **Quote Approvals**: Review and dispatch AI-generated quotes.
 
-- **Sophiie Orbit (Tradie Dashboard)** — Mobile-first workspace for daily trade operations. Handles voicememos, appointment scheduling, real-time enquiry management, calendar views, and quote approvals.
+### 🌌 Sophiie Space (The Command Center)
+Internal control plane for **Platform Administrators**.
+- **User Onboarding**: Configure tradie business profiles, rates, and service areas.
+- **Voice Orchestration**: Map Twilio numbers to specific AI personas.
+- **System Monitoring**: Track voice pipeline health and business performance.
 
 - **Customer Surface** — Customer-facing interactions via SMS, voice calls, and photo upload links triggered from the Orbit workflow.
 
