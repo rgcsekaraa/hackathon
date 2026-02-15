@@ -1,139 +1,120 @@
-# Sophiie Space + Orbit
+# Sophiie Platform
 
-Sophiie Space is a realtime multimodal workspace for trade-service operations.
+> Voice-first AI workspace for trade-service operations.
 
-Orbit is the interaction layer and UI system powering fast voice, text, and structured workflow updates.
+## Architecture
+
+```
+apps/
+├── api/         → FastAPI backend (shared)         :8000
+├── customer/    → Sophiie Orbit (customer portal)  :3000
+└── admin/       → Sophiie Space (admin portal)     :3001
+packages/
+└── shared/      → Shared TypeScript utilities
+```
+
+| Service | Description | Port |
+|---------|-------------|------|
+| **Sophiie Orbit** (`apps/customer`) | Customer/tradie dashboard — appointments, calendar, enquiries, voice | `3000` |
+| **Sophiie Space** (`apps/admin`) | Super-admin console — user management, system health, call logs | `3001` |
+| **API** (`apps/api`) | FastAPI backend — auth, voice pipeline, integrations, WebSocket | `8000` |
+
+## Quick Start
+
+```bash
+# 1. Install dependencies
+pnpm install
+cd apps/api && pip install -r requirements.txt
+
+# 2. Configure environment
+cp apps/api/.env.example apps/api/.env
+# Edit .env with your API keys
+
+# 3. Run all services
+cd apps/api && uvicorn main:app --reload --port 8000
+cd apps/customer && npm run dev       # port 3000
+cd apps/admin && npm run dev          # port 3001
+```
+
+### NX Commands
+
+```bash
+npx nx show projects                  # List all projects
+npx nx serve customer                 # Start customer portal
+npx nx serve admin                    # Start admin portal
+npx nx build customer                 # Build customer portal
+npx nx build admin                    # Build admin portal
+npx nx run-many --target=build        # Build everything
+```
+
+## Admin Credentials
+
+The bootstrap super-admin is created automatically at API startup.
+
+| Field | Value |
+|-------|-------|
+| **Email** | `superadmin@sophiie.com` |
+| **Password** | `d3m0-p@s5` |
+| **Login alias** | `demo-SA` |
+
+Override via environment variables:
+
+- `BOOTSTRAP_ADMIN_ENABLED` / `BOOTSTRAP_ADMIN_EMAIL` / `BOOTSTRAP_ADMIN_PASSWORD`
 
 ## What This Solves
 
-Trade teams lose time switching between calls, notes, quotes, schedule updates, and customer follow-up.
+Trade teams lose time switching between calls, notes, quotes, schedule updates, and customer follow-up. Sophiie turns that into one continuous flow:
 
-Sophiie Space + Orbit turns that into one continuous flow:
-
-- Capture customer intent from voice/text
-- Classify and enrich lead context with AI
-- Price and route jobs with business profile rules
-- Keep dashboard/workspace state synced in realtime
-- Trigger customer actions (for example photo upload links) from the same flow
-
-## Product Roles
-
-- **System Space (Admin):**
-  Internal control plane for monitoring system health, onboarding customers, and managing node configurations. Features high-contrast, data-dense UI for system administrators.
-
-- **Command Center (Tradie Dashboard):**
-  Mobile-first workspace for daily operations. Handles voice memos, job tracking, and real-time lead updates.
-
-- **Customer Portal:**
-  Customer-facing surface for job status tracking and secure photo uploads.
-
-## Multimodal Architecture
-
-    Customer Voice/Text
-       -> Ingestion Layer (Twilio/WebSocket/API)
-       -> STT (Deepgram) + Intent/Entity Extraction (LLM via OpenRouter/LangChain)
-       -> Orchestration (FastAPI services + profile context + quote logic)
-       -> Persistence (SQLite via SQLAlchemy) + Caching (Redis optional)
-       -> Realtime Sync (WebSocket events to UI)
-       -> Response Layer (Web UI updates, TTS via ElevenLabs, SMS follow-up)
-
-### Core Services
-
-- `apps/web`: Next.js customer/admin/tradie web experience
-- `apps/api`: FastAPI orchestration, auth, voice/lead pipelines, integrations
-- Integrations: Deepgram, ElevenLabs, OpenRouter, Twilio, Google APIs (optional)
+1. Customer calls or submits a request
+2. Orbit captures conversation and extracts job details via AI
+3. System resolves business context (service types, rates, travel radius)
+4. AI proposes structured lead + quote draft
+5. Team reviews/edits in dashboard and confirms booking
+6. Customer receives follow-up via SMS; workspace stays synced
 
 ## Features
 
-- **Voice AI Pipeline:** Real-time bidirectional voice (Twilio Media Streams + Deepgram + ElevenLabs).
-- **Intelligent Classification:** LangChain agents classify intent, extract entities, and assess urgency.
-- **Context-Aware Responses:** Injects business context (service radius, pricing) into AI conversations.
-- **Portals:** Dedicated interfaces for Admins, Tradies, and Customers.
-- **Realtime Sync:** WebSocket events push updates instantly to connected dashboards.
-- **Vision Analysis:** Automated photo analysis for accurate quoting.
-
-## User Scenario Covered
-
-1. Customer calls or submits a request.
-2. Orbit captures conversation and extracts job details.
-3. System resolves business profile context (service types, rates, travel radius).
-4. AI proposes structured lead + quote draft.
-5. Team reviews/edits in dashboard and confirms booking.
-6. Customer receives follow-up link/message via SMS; workspace remains synced for team members.
+- **Voice AI Pipeline** — Real-time bidirectional voice (LiveKit + Deepgram + ElevenLabs)
+- **Intelligent Classification** — LangChain agents classify intent, extract entities, assess urgency
+- **Context-Aware Responses** — Business profile context injected into AI conversations
+- **Dual Portals** — Dedicated interfaces for admins and customers
+- **Realtime Sync** — WebSocket events push updates to connected dashboards
+- **Vision Analysis** — Automated photo analysis for accurate quoting
 
 ## Tech Stack
 
-- **Frontend:** Next.js (App Router), React, MUI, Tailwind CSS
+- **Frontend:** Next.js 16 (App Router), React 19, MUI 7, Tailwind CSS
 - **Backend:** FastAPI, SQLAlchemy, aiosqlite, WebSockets
-- **AI/Voice:** LangChain, OpenRouter, Deepgram, ElevenLabs
-- **Infra:** Docker, docker-compose, Railway/Render manifests
+- **AI/Voice:** LiveKit Agents, LangChain, OpenRouter, Deepgram, ElevenLabs
+- **Infra:** Docker, Railway (multi-service), pnpm + NX monorepo
 
-## Usage
+## Environment Variables
 
-1. Install dependencies:
+Set in `apps/api/.env`:
 
-```bash
-pnpm install
-cd apps/api && pip install -r requirements.txt
-```
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `SECRET_KEY` | Yes | JWT signing key |
+| `DATABASE_URL` | Yes | SQLite/Postgres URL |
+| `FRONTEND_URL` | Yes | Customer portal URL |
+| `DEEPGRAM_API_KEY` | Yes | Speech-to-text |
+| `ELEVENLABS_API_KEY` | Yes | Text-to-speech |
+| `LIVEKIT_URL` | Yes | LiveKit server URL |
+| `LIVEKIT_API_KEY` | Yes | LiveKit API key |
+| `LIVEKIT_API_SECRET` | Yes | LiveKit API secret |
+| `OPENROUTER_API_KEY` | Yes | LLM provider |
+| `TWILIO_ACCOUNT_SID` | Optional | SMS/voice |
+| `TWILIO_AUTH_TOKEN` | Optional | SMS/voice |
+| `GOOGLE_CLIENT_ID` | Optional | OAuth |
+| `GOOGLE_CLIENT_SECRET` | Optional | OAuth |
 
-2. Configure backend environment:
+## Deployment (Railway)
 
-```bash
-cp apps/api/.env.example apps/api/.env
-```
+Configured in `railway.toml` for 4 services:
 
-Set at minimum:
-- `SECRET_KEY`
-- `DATABASE_URL`
-- `FRONTEND_URL`
-- `GOOGLE_CLIENT_ID` (optional for local dev)
-- `GOOGLE_CLIENT_SECRET` (optional for local dev)
-- `DEEPGRAM_API_KEY`
-- `ELEVENLABS_API_KEY`
-- `TWILIO_ACCOUNT_SID`
-- `TWILIO_AUTH_TOKEN`
+- `api` — Python backend
+- `worker` — LiveKit voice agent
+- `customer` — Next.js customer portal
+- `admin` — Next.js admin portal
 
-3. Run API and web:
-
-```bash
-# In separate terminals:
-cd apps/api && uvicorn main:app --reload --port 8000
-cd apps/web && pnpm dev
-```
-
-4. Open:
-- Web: `http://localhost:3000`
-- API health: `http://localhost:8000/health`
-- API docs: `http://localhost:8000/docs`
-
-## Default Super Admin (Sophiie Space)
-
-Space bootstrap admin is created automatically at API startup (unless disabled).
-
-- Login alias: `demo-SA`
-- Email (resolved alias): `superadmin@sophiie.com`
-- Password: `d3m0-p@s5`
-
-Environment variables (optional overrides):
-
-- `BOOTSTRAP_ADMIN_ENABLED`
-- `BOOTSTRAP_ADMIN_ALIAS`
-- `BOOTSTRAP_ADMIN_EMAIL`
-- `BOOTSTRAP_ADMIN_PASSWORD`
-- `BOOTSTRAP_ADMIN_NAME`
-
-Web aliases for login UI:
-
-- `NEXT_PUBLIC_BOOTSTRAP_ADMIN_ALIAS`
-- `NEXT_PUBLIC_BOOTSTRAP_ADMIN_EMAIL`
-- `NEXT_PUBLIC_BOOTSTRAP_ADMIN_PASSWORD`
-
-## Portal Routes
-
-- Sophiie Space (admin): `http://localhost:3000/admin-portal`
-- Sophiie Orbit (customer/tradie): `http://localhost:3000/customer-portal`
-
-## Repository Note
-
-This repository currently documents and supports the web + API runtime flow.
+Each service has its own `Dockerfile` in its respective `apps/` directory.

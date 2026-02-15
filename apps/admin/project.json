@@ -1,25 +1,25 @@
 {
-  "name": "customer",
+  "name": "admin",
   "targets": {
     "serve": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "npx next dev -p 3000",
-        "cwd": "apps/customer"
+        "command": "npx next dev -p 3001",
+        "cwd": "apps/admin"
       }
     },
     "dev": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "npx next dev -p 3000",
-        "cwd": "apps/customer"
+        "command": "npx next dev -p 3001",
+        "cwd": "apps/admin"
       }
     },
     "build": {
       "executor": "nx:run-commands",
       "options": {
         "command": "npx next build",
-        "cwd": "apps/customer"
+        "cwd": "apps/admin"
       }
     }
   }
