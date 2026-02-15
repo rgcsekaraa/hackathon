@@ -14,6 +14,7 @@ class UserLogin(BaseModel):
 
 class UserOut(UserBase):
     id: str
+    role: Optional[str] = None
 
     class Config:
         from_attributes = True

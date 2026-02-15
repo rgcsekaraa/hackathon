@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from core.config import settings
 from routers import health, session, auth, oauth, search, leads, profile, voice, ws_leads, admin
 from db.init_db import init_db
+from services.bootstrap_admin import ensure_bootstrap_admin
 
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -25,6 +26,7 @@ async def lifespan(app: FastAPI):
     """Startup and shutdown logic for the application."""
     # Initialize database tables
     await init_db()
+    await ensure_bootstrap_admin()
     yield
     # Future: close Redis connection pool
 

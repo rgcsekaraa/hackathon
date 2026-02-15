@@ -42,6 +42,11 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 60 * 24 * 7  # 7 days for dev convenience
     admin_emails: list[str] = ["superadmin@sophiie.com"]
+    bootstrap_admin_enabled: bool = True
+    bootstrap_admin_alias: str = "demo-SA"
+    bootstrap_admin_email: str = "superadmin@sophiie.com"
+    bootstrap_admin_password: str = "d3m0-p@s5"
+    bootstrap_admin_name: str = "Demo Super Admin"
 
     # OAuth2 / Google SSO
     google_client_id: str = ""
@@ -70,7 +75,9 @@ class Settings(BaseSettings):
     # LiveKit (Real-time voice rooms)
     livekit_api_key: str = ""
     livekit_api_secret: str = ""
-    livekit_url: str = "ws://localhost:7880"
+    livekit_url: str = "wss://sophiie-orbit.livekit.cloud"
+
+
 
     # Default pricing (fallback if tradie hasn't configured)
     default_callout_fee: float = 80.0

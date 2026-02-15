@@ -36,6 +36,7 @@ async def signup(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
     
     normalized_email = user_in.email.strip().lower()
     admin_emails = {e.strip().lower() for e in settings.admin_emails}
+    admin_emails.add(settings.bootstrap_admin_email.strip().lower())
     is_bootstrap_admin = normalized_email in admin_emails
 
     # Create user
@@ -79,6 +80,7 @@ async def login(credentials: UserLogin, db: AsyncSession = Depends(get_db)):
         )
     
     admin_emails = {e.strip().lower() for e in settings.admin_emails}
+    admin_emails.add(settings.bootstrap_admin_email.strip().lower())
     if normalized_email in admin_emails and (user.role != "admin" or not user.is_verified):
         user.role = "admin"
         user.is_verified = True
