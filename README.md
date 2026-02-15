@@ -14,7 +14,7 @@
 | **Project Name** | Sophiie Platform |
 | **One-Line Description** | Voice-first AI workspace for trade-service operations. |
 | **Demo Video Link** | [Watch Demo](https://www.loom.com/share/41331cf4fa354f959ec51f4a90569983) |
-| **Tech Stack** | Next.js 16, React 19, MUI 7, FastAPI, Python 3.11, LiveKit Agents, SQLite/Postgres |
+| **Tech Stack** | Next.js 16, React 19, MUI 7, FastAPI, Python 3.11, LiveKit Agents, SQLite |
 | **AI Provider(s) Used** | Deepgram (STT), ElevenLabs (TTS), OpenRouter (LLM - Claude/GPT), LiveKit (Realtime) |
 
 ### About Your Project
@@ -187,7 +187,7 @@ Set in `apps/api/.env`:
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `SECRET_KEY` | Yes | JWT signing key |
-| `DATABASE_URL` | Yes | SQLite or Postgres connection string |
+| `DATABASE_URL` | Yes | SQLite connection string |
 | `FRONTEND_URL` | Yes | Customer portal URL (e.g. `http://localhost:3000`) |
 | `DEEPGRAM_API_KEY` | Yes | Real-time speech-to-text |
 | `ELEVENLABS_API_KEY` | Yes | Text-to-speech synthesis |
@@ -217,7 +217,7 @@ NEXT_PUBLIC_WS_URL=ws://localhost:8000
 | **Backend** | FastAPI, SQLAlchemy 2.0, aiosqlite, Pydantic v2, WebSockets |
 | **AI / Voice** | LiveKit Agents 1.4, LangChain, OpenRouter, Deepgram Nova-2, ElevenLabs |
 | **Auth** | JWT (HS256), bcrypt, Google OAuth 2.0 |
-| **Database** | SQLite (dev), PostgreSQL (prod) |
+| **Database** | SQLite |
 | **Infra** | pnpm workspaces, NX, Docker Compose (local DB/Redis) |
 
 ---
