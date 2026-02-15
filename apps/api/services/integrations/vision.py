@@ -1,11 +1,14 @@
 """
-Google Cloud Vision integration for photo analysis.
+Image analysis integration for photo uploads.
 
-Detects objects and labels in customer-uploaded photos to identify
-tap types, fixtures, and parts. Falls back to mock data when no API key.
+Provider order:
+1. Google Cloud Vision (if GOOGLE_CLOUD_VISION_KEY exists)
+2. OpenRouter multimodal fallback (if OPENROUTER_API_KEY exists)
 """
 
 from __future__ import annotations
+import base64
+import json
 import logging
 import httpx
 from schemas.lead import PhotoAnalysis
@@ -14,104 +17,166 @@ from core.retry import retry_async
 
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Mock data for demo (no API key)
-# ---------------------------------------------------------------------------
-
-MOCK_ANALYSES: dict[str, PhotoAnalysis] = {
-    "default": PhotoAnalysis(
-        labels=["tap", "faucet", "plumbing", "sink", "bathroom"],
-        detected_objects=["Mixer Tap", "Basin"],
-        detected_part="mixer_tap",
-        confidence=0.87,
-        suggested_sku_class="mixer_tap_15mm",
-    ),
-    "toilet": PhotoAnalysis(
-        labels=["toilet", "bathroom", "plumbing", "cistern"],
-        detected_objects=["Toilet", "Cistern"],
-        detected_part="toilet_cistern",
-        confidence=0.91,
-        suggested_sku_class="cistern_valve_standard",
-    ),
-    "pipe": PhotoAnalysis(
-        labels=["pipe", "leak", "water", "copper", "plumbing"],
-        detected_objects=["Copper Pipe", "Joint"],
-        detected_part="copper_pipe_joint",
-        confidence=0.82,
-        suggested_sku_class="copper_elbow_15mm",
-    ),
-}
-
-
 async def analyse_image(image_url: str | None = None, image_bytes: bytes | None = None) -> PhotoAnalysis:
     """
-    Analyse a photo using Google Cloud Vision.
+    Analyse a photo using a real provider.
 
-    Falls back to mock analysis if no API key is configured.
+    Raises RuntimeError when no provider is configured or analysis fails.
     """
-    if not settings.google_cloud_vision_key:
-        logger.info("No Vision API key -- returning mock analysis")
-        return MOCK_ANALYSES["default"]
+    if not image_url and not image_bytes:
+        raise RuntimeError("Image analysis requires image_url or image_bytes")
 
-    try:
-        # Build request for Google Cloud Vision
-        if image_url:
-            image_source = {"source": {"imageUri": image_url}}
-        elif image_bytes:
-            import base64
-            image_source = {"content": base64.b64encode(image_bytes).decode()}
-        else:
-            return MOCK_ANALYSES["default"]
+    # Try Google first when configured.
+    if settings.google_cloud_vision_key:
+        try:
+            return await _analyse_with_google_vision(image_url=image_url, image_bytes=image_bytes)
+        except Exception as exc:
+            logger.warning("Google Vision failed, trying OpenRouter vision fallback: %s", exc)
 
-        payload = {
-            "requests": [{
-                "image": image_source,
-                "features": [
-                    {"type": "LABEL_DETECTION", "maxResults": 10},
-                    {"type": "OBJECT_LOCALIZATION", "maxResults": 5},
-                ]
-            }]
+    # Fallback to OpenRouter multimodal when configured.
+    if settings.openrouter_api_key:
+        return await _analyse_with_openrouter(image_url=image_url, image_bytes=image_bytes)
+
+    raise RuntimeError(
+        "No image analysis provider configured. Set GOOGLE_CLOUD_VISION_KEY or OPENROUTER_API_KEY."
+    )
+
+
+async def _analyse_with_google_vision(
+    image_url: str | None = None,
+    image_bytes: bytes | None = None,
+) -> PhotoAnalysis:
+    if image_url:
+        image_source = {"source": {"imageUri": image_url}}
+    else:
+        image_source = {"content": base64.b64encode(image_bytes or b"").decode()}
+
+    payload = {
+        "requests": [{
+            "image": image_source,
+            "features": [
+                {"type": "LABEL_DETECTION", "maxResults": 10},
+                {"type": "OBJECT_LOCALIZATION", "maxResults": 5},
+            ]
+        }]
+    }
+
+    async def _do_vision_request() -> dict:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.post(
+                f"https://vision.googleapis.com/v1/images:annotate?key={settings.google_cloud_vision_key}",
+                json=payload,
+            )
+            resp.raise_for_status()
+            return resp.json()
+
+    data = await retry_async(
+        _do_vision_request,
+        max_attempts=2,
+        base_delay=0.5,
+        max_delay=3.0,
+        retryable_exceptions=(httpx.HTTPStatusError, httpx.ConnectError, httpx.ReadTimeout),
+    )
+
+    response = data.get("responses", [{}])[0]
+    labels = [a["description"] for a in response.get("labelAnnotations", [])]
+    objects = [o["name"] for o in response.get("localizedObjectAnnotations", [])]
+    detected_part, sku_class = _classify_part(labels, objects)
+    confidence = max(
+        (a.get("score", 0) for a in response.get("labelAnnotations", [])),
+        default=0.0,
+    )
+
+    if not labels and not objects:
+        raise RuntimeError("Google Vision returned no labels/objects")
+
+    return PhotoAnalysis(
+        labels=labels,
+        detected_objects=objects,
+        detected_part=detected_part,
+        confidence=round(confidence, 2),
+        suggested_sku_class=sku_class,
+    )
+
+
+async def _analyse_with_openrouter(
+    image_url: str | None = None,
+    image_bytes: bytes | None = None,
+) -> PhotoAnalysis:
+    if image_url:
+        image_part = {"type": "image_url", "image_url": {"url": image_url}}
+    else:
+        b64 = base64.b64encode(image_bytes or b"").decode()
+        image_part = {
+            "type": "image_url",
+            "image_url": {"url": f"data:image/jpeg;base64,{b64}"},
         }
 
-        async def _do_vision_request() -> dict:
-            async with httpx.AsyncClient(timeout=15.0) as client:
-                resp = await client.post(
-                    f"https://vision.googleapis.com/v1/images:annotate?key={settings.google_cloud_vision_key}",
-                    json=payload,
-                )
-                resp.raise_for_status()
-                return resp.json()
+    prompt = (
+        "Analyse this plumbing photo and return strict JSON with keys: "
+        "labels (string[]), detected_objects (string[]), confidence (0..1), "
+        "detected_part (string|null), suggested_sku_class (string|null). "
+        "No markdown. No extra keys."
+    )
 
-        data = await retry_async(
-            _do_vision_request,
-            max_attempts=2,
-            base_delay=0.5,
-            max_delay=3.0,
-            retryable_exceptions=(httpx.HTTPStatusError, httpx.ConnectError, httpx.ReadTimeout),
+    payload = {
+        "model": settings.openrouter_model,
+        "temperature": 0.0,
+        "max_tokens": 300,
+        "messages": [
+            {"role": "system", "content": "You extract structured visual data for plumbing parts."},
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                    image_part,
+                ],
+            },
+        ],
+    }
+
+    async with httpx.AsyncClient(timeout=20.0) as client:
+        resp = await client.post(
+            f"{settings.openrouter_base_url}/chat/completions",
+            headers={
+                "Authorization": f"Bearer {settings.openrouter_api_key}",
+                "Content-Type": "application/json",
+            },
+            json=payload,
         )
+        resp.raise_for_status()
+        data = resp.json()
 
-        response = data.get("responses", [{}])[0]
-        labels = [a["description"] for a in response.get("labelAnnotations", [])]
-        objects = [o["name"] for o in response.get("localizedObjectAnnotations", [])]
+    content = data["choices"][0]["message"]["content"]
+    if isinstance(content, list):
+        content = "".join(str(c.get("text", "")) for c in content if isinstance(c, dict))
+    content = str(content).strip()
+    if content.startswith("```"):
+        content = content.split("\n", 1)[1].rsplit("```", 1)[0].strip()
+    parsed = json.loads(content)
 
-        # Map detected labels to part classification
-        detected_part, sku_class = _classify_part(labels, objects)
-        confidence = max(
-            (a.get("score", 0) for a in response.get("labelAnnotations", [])),
-            default=0.0,
-        )
+    labels = [str(v) for v in parsed.get("labels", []) if v]
+    objects = [str(v) for v in parsed.get("detected_objects", []) if v]
+    detected_part = parsed.get("detected_part")
+    sku_class = parsed.get("suggested_sku_class")
+    confidence = float(parsed.get("confidence", 0.0))
 
-        return PhotoAnalysis(
-            labels=labels,
-            detected_objects=objects,
-            detected_part=detected_part,
-            confidence=round(confidence, 2),
-            suggested_sku_class=sku_class,
-        )
+    # Backfill classification if model omitted it.
+    if not detected_part and not sku_class:
+        inferred_part, inferred_sku = _classify_part(labels, objects)
+        detected_part = inferred_part
+        sku_class = inferred_sku
 
-    except Exception as e:
-        logger.error("Vision API error: %s -- falling back to mock", e)
-        return MOCK_ANALYSES["default"]
+    if not labels and not objects:
+        raise RuntimeError("OpenRouter vision returned no labels/objects")
+
+    return PhotoAnalysis(
+        labels=labels,
+        detected_objects=objects,
+        detected_part=detected_part,
+        confidence=max(0.0, min(1.0, round(confidence, 2))),
+        suggested_sku_class=sku_class,
+    )
 
 
 def _classify_part(labels: list[str], objects: list[str]) -> tuple[str | None, str | None]:

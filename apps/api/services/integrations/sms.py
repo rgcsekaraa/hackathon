@@ -16,11 +16,15 @@ async def send_sms(to: str, body: str) -> dict:
     """
     Send an SMS via Twilio.
 
-    Returns {"status": "sent", "to": to} on success, or mock response if no credentials.
+    Returns {"status": "sent", "to": to} on success.
     """
     if not app_settings.twilio_account_sid or not app_settings.twilio_auth_token:
-        logger.info("[MOCK SMS] To: %s | Body: %s", to, body[:100])
-        return {"status": "mock_sent", "to": to, "body": body}
+        logger.error("Twilio is not configured; refusing to send simulated SMS")
+        return {
+            "status": "error",
+            "to": to,
+            "error": "Twilio is not configured",
+        }
 
     try:
         import httpx
@@ -53,7 +57,7 @@ async def send_sms(to: str, body: str) -> dict:
 def build_photo_upload_url(lead_id: str, base_url: str | None = None) -> str:
     """Build the URL for the customer photo upload page."""
     url = base_url or app_settings.frontend_url
-    return f"{url}/customer/upload/{lead_id}"
+    return f"{url}/customer?lead={lead_id}"
 
 
 async def send_photo_upload_link(to: str, lead_id: str, base_url: str | None = None) -> dict:
