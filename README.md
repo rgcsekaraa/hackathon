@@ -8,24 +8,15 @@ Sophiie captures customer intent from voice and text, classifies and enriches le
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                           Monorepo (pnpm + NX)                         │
-├──────────────────┬──────────────────┬────────────────┬──────────────────┤
-│   apps/customer  │   apps/admin     │   apps/api     │  packages/shared │
-│   (Sophiie Orbit)│   (Sophiie Space)│   (FastAPI)    │  (TS utilities)  │
-│   Next.js :3000  │   Next.js :3001  │   Python :8000 │                  │
-└──────────────────┴──────────────────┴────────────────┴──────────────────┘
-```
-
 ### Service Map
 
 | Service | Stack | Port | Description |
 |---------|-------|------|-------------|
-| **Sophiie Orbit** | Next.js 16, React 19, MUI 7 | `3000` | Customer/tradie portal — appointments, calendar, enquiries, voice memos |
+| **Sophiie Orbit** | Next.js 16, React 19, MUI 7 | `3000` | Customer/tradie portal — appointments, calendar, enquiries, voice assistant |
 | **Sophiie Space** | Next.js 16, React 19, MUI 7 | `3001` | Super-admin console — user management, onboarding, monitoring, inbound setup |
 | **API** | FastAPI, SQLAlchemy, aiosqlite | `8000` | Backend — auth, voice pipeline, lead orchestration, integrations, WebSocket |
-| **Worker** | Python (LiveKit Agents) | — | Background voice agent for real-time call handling |
+| **Tradie Worker** | Python (LiveKit Agents 1.4) | — | Voice assistant for tradies — jobs, SMS, SDUI, outbound calls |
+| **Customer Worker** | Python (LiveKit Agents 1.4) | — | Virtual receptionist for inbound customer calls — lead capture, area check |
 
 ---
 
@@ -70,84 +61,6 @@ flowchart LR
 8. **Realtime sync** pushes the new lead/enquiry to all connected dashboards via WebSocket.
 9. **Tradie reviews** the enquiry in Orbit, approves or edits the quote.
 10. **Customer receives** a follow-up SMS with booking confirmation or photo upload link.
-
----
-
-## Project Structure
-
-### Backend (`apps/api`)
-
-```
-apps/api/
-├── main.py                     # FastAPI app entry point
-├── init_and_seed.py            # Database initialization and seeding
-├── core/
-│   └── config.py               # Settings, JWT config, admin bootstrap
-├── db/                         # SQLAlchemy database setup
-├── models/                     # ORM models (User, Lead, Profile, etc.)
-├── schemas/                    # Pydantic request/response schemas
-├── routers/
-│   ├── auth.py                 # Email/password authentication
-│   ├── oauth.py                # Google OAuth flow
-│   ├── admin.py                # Admin: onboarding, profiles, stats
-│   ├── leads.py                # Lead CRUD + AI enrichment
-│   ├── profile.py              # Business profile management
-│   ├── voice.py                # Voice pipeline status + config
-│   ├── session.py              # Session management
-│   ├── search.py               # Full-text search across entities
-│   ├── health.py               # Health check endpoints
-│   └── ws_leads.py             # WebSocket for realtime lead updates
-├── services/
-│   ├── ai_service.py           # LangChain/OpenRouter LLM integration
-│   ├── lead_orchestrator.py    # End-to-end lead processing pipeline
-│   ├── quote_engine.py         # Automated quoting logic
-│   ├── profile_context.py      # Business context resolution
-│   ├── workspace_service.py    # Workspace component management
-│   ├── bootstrap_admin.py      # Auto-create super-admin on startup
-│   ├── cache_service.py        # Caching layer
-│   ├── lead_cache.py           # Lead-specific cache
-│   ├── notifications.py        # Push notification dispatch
-│   ├── ai/                     # AI sub-modules
-│   ├── integrations/           # Twilio, Deepgram, ElevenLabs wrappers
-│   ├── realtime/               # WebSocket event broadcasting
-│   └── voice/                  # LiveKit agent, voice pipeline
-├── scripts/                    # Utility scripts
-└── tests/                      # API test suite
-```
-
-### Customer Portal (`apps/customer`)
-
-```
-apps/customer/src/
-├── app/
-│   ├── page.tsx                # Root redirect → /customer-portal or /auth/login
-│   ├── auth/login/page.tsx     # Orbit login (email/password + Google OAuth)
-│   ├── dashboard/page.tsx      # DashboardShell wrapper (authenticated)
-│   ├── customer-portal/page.tsx# DashboardShell wrapper (authenticated)
-│   └── customer/page.tsx       # Customer-specific view
-├── components/
-│   ├── orbit/                  # DashboardShell, CalendarView, EnquiriesView,
-│   │                           # NotificationsPanel, VoiceFab, EnquiryPushModal
-│   ├── voice/                  # VoiceCapture component (microphone input)
-│   ├── workspace/              # TaskCard, StatusIndicator
-│   ├── input/                  # TextInput, ActionChips
-│   ├── layout/                 # MobileLayout
-│   ├── providers/              # AuthProvider, WorkspaceProvider, ThemeProvider
-│   └── dashboard/              # Dashboard-specific components
-└── lib/                        # Auth context wrappers, theme context
-```
-
-### Admin Portal (`apps/admin`)
-
-```
-apps/admin/src/
-├── app/
-│   ├── page.tsx                # Admin dashboard (Overview, Customers, Inbound, Monitoring)
-│   └── auth/login/page.tsx     # Space login (email/password only, no OAuth)
-├── components/
-│   └── providers/              # AuthProvider, ThemeProvider
-└── lib/                        # Auth context wrapper, theme context
-```
 
 ---
 
@@ -231,7 +144,15 @@ cd apps/customer && npm run dev    # → http://localhost:3000
 
 # Terminal 3 — Admin Portal (Sophiie Space)
 cd apps/admin && npm run dev       # → http://localhost:3001
+
+# Terminal 4 — Tradie Voice Worker (Assistant)
+pnpm worker:tradie
+
+# Terminal 5 — Customer Voice Worker (Receptionist)
+pnpm worker:customer
 ```
+
+> **Shortcut:** `pnpm dev` starts the API + both frontends in parallel via NX.
 
 ### 4. Access
 
@@ -311,25 +232,35 @@ NEXT_PUBLIC_WS_URL=ws://localhost:8000
 |-------|-------------|
 | **Frontend** | Next.js 16 (App Router, Turbopack), React 19, MUI 7, Tailwind CSS |
 | **Backend** | FastAPI, SQLAlchemy 2.0, aiosqlite, Pydantic v2, WebSockets |
-| **AI / Voice** | LiveKit Agents, LangChain, OpenRouter, Deepgram, ElevenLabs |
+| **AI / Voice** | LiveKit Agents 1.4, LangChain, OpenRouter, Deepgram Nova-2, ElevenLabs |
 | **Auth** | JWT (HS256), bcrypt, Google OAuth 2.0 |
 | **Database** | SQLite (dev), PostgreSQL (prod) |
-| **Infra** | Docker, Railway (multi-service), pnpm workspaces, NX |
+| **Infra** | pnpm workspaces, NX, Docker Compose (local DB/Redis) |
 
 ---
 
-## Deployment (Railway)
+## Voice Architecture
 
-Configured in `railway.toml` for four services:
+The platform uses a **dual-worker** architecture for voice AI, powered by [LiveKit Agents](https://docs.livekit.io/agents/):
 
-| Service | Root | Dockerfile | Port |
-|---------|------|-----------|------|
-| `api` | `apps/api` | `Dockerfile` | 8000 |
-| `worker` | `apps/api` | `Dockerfile` | — |
-| `customer` | `apps/customer` | `Dockerfile` | 3000 |
-| `admin` | `apps/admin` | `Dockerfile` | 3001 |
+| Worker | File | Role | Dispatch Filter |
+|--------|------|------|------------------|
+| **Tradie Worker** | `tradie_worker.py` | Assistant — jobs, SMS, SDUI | `identity.startsWith("user-")` |
+| **Customer Worker** | `customer_worker.py` | Receptionist — lead intake, area check | All other participants |
 
-Each service auto-deploys from the `main` branch on push.
+### Voice Features
+
+- **VoiceFab** — Microphone button in Orbit connects to the Tradie Worker for hands-free assistant interaction.
+- **Inbound Calls** — Customer calls are handled by the Customer Worker as a virtual receptionist (Twilio → LiveKit).
+- **SDUI** — The assistant can push UI components to the dashboard in real-time (e.g. "Show me jobs for tomorrow").
+- **Smart Actions** — Tools for SMS notifications ("I'm running 15 mins late"), outbound calls, and lead logging.
+- **Live Call Status** — Real-time "Active Call" banner on the dashboard via WebSocket events.
+
+### Twilio Configuration (Optional)
+
+To enable inbound phone calls, configure your Twilio Phone Number:
+- **Voice Webhook URL:** `https://<your-public-url>/api/voice/incoming` (POST)
+- For local dev, use `ngrok http 8000` to get a public URL.
 
 ---
 
